@@ -3,114 +3,99 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ShareMiiShot — Soluzione definitiva (puro JS)</title>
+<title>sharemiishot — Wii U friendly</title>
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;max-width:780px;margin:18px auto;padding:14px;color:#111}
-  h1{font-size:1.15rem;margin:0 0 8px}
-  .box{border:1px dashed #999;padding:12px;border-radius:6px;margin:10px 0;background:#fbfbfb}
+  body{font-family:Arial,Helvetica,sans-serif;max-width:820px;margin:14px auto;padding:12px;color:#111;background:#fff}
+  header{display:block;margin-bottom:10px}
+  img#banner{width:100%;max-height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
+  h1{font-size:1.05rem;margin:10px 0}
+  .box{border:1px dashed #bbb;padding:10px;border-radius:6px;margin:10px 0;background:#fbfbfb}
+  .note{font-size:0.95rem;color:#333;margin:8px 0}
+  button{padding:10px 14px;font-size:1rem;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
+  button[disabled]{opacity:0.6;cursor:default}
+  #preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
+  #qr, #codeBox, #links {margin-top:10px}
+  textarea.dataout{width:100%;height:96px}
+  small.warn{color:#c33}
   .hidden{display:none}
-  #preview,#viewImg{max-width:100%;border:1px solid #ccc;padding:6px;margin-top:8px;display:block}
-  input[type=file]{display:block;margin-top:8px}
-  button{padding:8px 12px;margin-top:8px}
-  .note{font-size:0.92rem;color:#444;margin-top:8px}
-  #qr{margin-top:10px}
-  textarea.dataout{width:100%;height:120px}
-  label{display:block;margin-top:8px}
-  small.warn{color:#b30}
-  @media (max-width:420px){ body{padding:8px} }
+  a.btnlink{display:inline-block;padding:8px 12px;background:#2d8a2d;color:#fff;border-radius:6px;text-decoration:none;margin-top:6px}
 </style>
 </head>
 <body>
-<h1>ShareMiiShot — Soluzione definitiva</h1>
+<header>
+  <!-- Put your sharemiishot.png (2000x500 suggested) in the same folder as this file -->
+  <img id="banner" src="sharemiishot.png" alt="sharemiishot banner">
+  <h1>sharemiishot — Condividi screenshot Wii U (modalità nativa)</h1>
+</header>
 
-<div id="ua" class="note"></div>
+<div class="box">
+  <div class="note"><strong>Modalità consigliata:</strong> avvia il gioco → premi HOME per mettere in pausa → dal menu HOME apri "Browser Internet" per ottenere la screenshot disponibile. Poi clicca il pulsante qui sotto.</div>
+  <div style="margin-top:8px">
+    <button id="grabBtn">Prendi immagine dal sistema</button>
+    <button id="stopPollBtn" style="margin-left:8px;background:#777;">Ferma ricerca</button>
+  </div>
+  <div id="status" class="note" style="margin-top:8px">Stato: in attesa.</div>
+</div>
 
-<div id="uibox" class="box hidden">
-  <strong>Schermata Wii U / Upload</strong>
-  <p class="note">Scegli un'immagine. Se il browser non permette la lettura programmatica, leggi le istruzioni nel riquadro "Fallback definitivo".</p>
-  <input id="fileInput" type="file" accept="image/*" />
-  <div id="status" class="note">Nessun file selezionato.</div>
+<div id="resultArea" class="box hidden">
+  <div id="previewBox">
+    <div class="note"><strong>Anteprima compressa (max 620px):</strong></div>
+    <img id="preview" alt="Anteprima immagine">
+  </div>
 
-  <canvas id="canvas" class="hidden"></canvas>
-  <img id="preview" alt="Anteprima" class="hidden">
+  <div id="codeBox">
+    <div class="note"><strong>Codice univoco:</strong> <span id="codeText" style="font-family:monospace;font-weight:bold"></span></div>
+  </div>
 
-  <label>Qualità JPEG (0.05 - 1.0): <input id="quality" type="number" value="0.25" step="0.05" min="0.05" max="1" style="width:80px"></label>
-  <label>Soglia QR (KB): <input id="thresholdKB" type="number" value="32" step="1" min="4" style="width:80px"></label>
+  <div id="qr">
+    <div class="note"><strong>QR / Link:</strong></div>
+    <div id="qrHolder"></div>
+    <div id="links" style="margin-top:8px"></div>
+  </div>
 
-  <button id="generateBtn" disabled>Genera codice &amp; QR</button>
-
-  <div id="result" class="hidden">
-    <p>Codice: <strong id="codeText"></strong></p>
-    <div id="qr"></div>
-    <div id="dataDiv" class="hidden">
-      <p class="note">QR non disponibile: copia il testo qui sotto e aprilo sul telefono.</p>
-      <textarea id="dataOut" class="dataout" readonly></textarea>
-    </div>
-    <p class="note">La mappatura codice→immagine viene salvata in localStorage sullo stesso browser (se supportato).</p>
+  <div id="dataArea" class="note hidden">
+    <div>DataURL (backup):</div>
+    <textarea id="dataOut" class="dataout" readonly></textarea>
   </div>
 </div>
 
-<div id="receiveBox" class="box hidden">
-  <strong>Schermata Ricezione</strong>
-  <p class="note">Scannerizza il QR o inserisci il codice per vedere l'immagine (funziona solo se è stata salvata in questo browser).</p>
-  <input id="codeIn" placeholder="Inserisci codice" style="width:180px"/>
-  <button id="showBtn">Mostra immagine</button>
-  <div id="view" class="hidden"><h3>Immagine</h3><img id="viewImg" alt="Immagine"></div>
-</div>
-
-<div id="fallbackBox" class="box hidden">
-  <strong>Fallback definitivo (se il browser non permette la lettura)</strong>
-  <ol>
-    <li>Apri il gioco → fai uno screenshot → premi <strong>HOME</strong> → nella HOME apri il <strong>Browser Internet</strong>. Alcuni giochi mettono lo screenshot disponibile per la condivisione.</li>
-    <li>Se non disponibile: copia l'immagine su <strong>PC o telefono</strong> via SD o collegando la console, poi apri la pagina su quel dispositivo.</li>
-    <li>Ultima risorsa: usa la funzione di copia/incolla del dataURL mostrato dalla pagina (se appare) oppure trasferiscilo manualmente.</li>
-  </ol>
-  <p class="note">Queste azioni sono necessarie solo se il browser blocca completamente l'accesso al file.</p>
+<div class="box">
+  <div class="note"><strong>Ricezione su altro dispositivo:</strong> se hai generato un codice, apri questa pagina sul telefono/PC e inserisci il codice (localStorage). Se non vedi l'immagine, copia il dataURL mostrato come backup.</div>
 </div>
 
 <script>
-/*
-  ShareMiiShot — "puro" ES5 JS, nessuna libreria esterna.
-  Strategie di lettura file: FileReader -> createObjectURL -> fallback istruzioni.
-*/
-
+/* sharemiishot pure ES5 single-file */
+/* Minimal QR fallback: if environment supports creating a small QR canvas, we'll attempt; otherwise we provide direct download link & dataURL */
 (function(){
-  var ua = navigator.userAgent || '';
-  var isWiiU = /Nintendo WiiU/i.test(ua);
-  document.getElementById('ua').innerHTML = 'User-Agent: ' + ua;
+  // util
+  function el(id){ return document.getElementById(id); }
+  function setStatus(t){ try{ el('status').innerHTML = 'Stato: ' + t; }catch(e){} }
+  function show(elm){ elm.className = elm.className.replace(/\bhidden\b/,'').trim(); }
+  function hide(elm){ if(!elm.className.match(/\bhidden\b/)) elm.className += ' hidden'; }
 
-  // mostra area corretta
-  if(isWiiU){
-    document.getElementById('uibox').className = document.getElementById('uibox').className.replace('hidden','');
-    document.getElementById('fallbackBox').className = document.getElementById('fallbackBox').className.replace('hidden','');
-  } else {
-    document.getElementById('receiveBox').className = document.getElementById('receiveBox').className.replace('hidden','');
-    // anche mostra upload se desideri testare da PC:
-    document.getElementById('uibox').className = document.getElementById('uibox').className.replace('hidden','');
-  }
+  // elements
+  var grabBtn = el('grabBtn');
+  var stopPollBtn = el('stopPollBtn');
+  var status = el('status');
+  var preview = el('preview');
+  var resultArea = el('resultArea');
+  var codeText = el('codeText');
+  var qrHolder = el('qrHolder');
+  var links = el('links');
+  var dataArea = el('dataArea');
+  var dataOut = el('dataOut');
 
-  var fileInput = document.getElementById('fileInput');
-  var status = document.getElementById('status');
-  var canvas = document.getElementById('canvas');
-  var preview = document.getElementById('preview');
-  var generateBtn = document.getElementById('generateBtn');
-  var result = document.getElementById('result');
-  var codeText = document.getElementById('codeText');
-  var qrDiv = document.getElementById('qr');
-  var dataDiv = document.getElementById('dataDiv');
-  var dataOut = document.getElementById('dataOut');
-  var quality = document.getElementById('quality');
-  var thresholdKB = document.getElementById('thresholdKB');
+  // settings
+  var maxDim = 620;
+  var jpegQuality = 0.25; // compression
+  var codeLen = 6;
+  var pollIntervalMs = 900;
+  var pollTimeoutMs = 22000; // 22s max
 
-  var codeIn = document.getElementById('codeIn');
-  var showBtn = document.getElementById('showBtn');
-  var view = document.getElementById('view');
-  var viewImg = document.getElementById('viewImg');
+  var poller = null;
+  var pollStart = 0;
 
-  var lastDataURL = null;
-  var lastCode = null;
-
-  // codice semplice generatore di ID
+  // generate small code
   function genCode(len){
     var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     var s = '';
@@ -118,221 +103,242 @@
     return s;
   }
 
-  // Funzione che prende un dataURL immagine, la ridimensiona e crea preview+dataURL compressa
-  function compressAndPreview(dataURL, desiredQuality, cb){
-    // dataURL -> Image -> canvas -> toDataURL
+  // helper: look for candidate <img> elements in the document that are not the banner
+  function findCandidateImage(){
+    try {
+      var imgs = document.getElementsByTagName('img');
+      if(!imgs) return null;
+      for(var i=0;i<imgs.length;i++){
+        var im = imgs[i];
+        // skip the banner by id
+        if(im.id === 'banner') continue;
+        // skip hidden or zero size images
+        var w = im.naturalWidth || im.width || 0;
+        var h = im.naturalHeight || im.height || 0;
+        if(w <= 8 || h <= 8) continue;
+        // often the system screenshot is big: pick images larger than a small threshold
+        if(w >= 64 || h >= 64){
+          // prefer images with "screenshot" like words in src
+          var src = (im.src || '').toLowerCase();
+          if(src.indexOf('screenshot') !== -1 || src.indexOf('screen') !== -1 || src.indexOf('share') !== -1 || src.indexOf('image') !== -1){
+            return im;
+          }
+        }
+      }
+      // fallback: return first image not banner and not tiny
+      for(var j=0;j<imgs.length;j++){
+        var im2 = imgs[j];
+        if(im2.id === 'banner') continue;
+        var w2 = im2.naturalWidth || im2.width || 0;
+        var h2 = im2.naturalHeight || im2.height || 0;
+        if(w2 > 8 && h2 > 8) return im2;
+      }
+      return null;
+    } catch(e){
+      return null;
+    }
+  }
+
+  // also check for elements with background-image style (rare)
+  function findCandidateBgImage(){
+    try {
+      var all = document.getElementsByTagName('*');
+      for(var i=0;i<all.length;i++){
+        var s = null;
+        try { s = window.getComputedStyle(all[i]).backgroundImage || ''; } catch(e){ s = all[i].style && all[i].style.backgroundImage || ''; }
+        if(s && s.indexOf('url(') !== -1){
+          // extract url
+          var m = s.match(/url\(["']?([^"')]+)["']?\)/);
+          if(m && m[1]){
+            var url = m[1];
+            // Avoid banner url
+            if(url.indexOf('sharemiishot.png') !== -1) continue;
+            return url;
+          }
+        }
+      }
+    } catch(e){}
+    return null;
+  }
+
+  // draw image (src may be data:, blob:, or http) to canvas, resize and compress -> callback(err, dataURL)
+  function processImageSrc(src, cb){
     try {
       var img = new Image();
       img.onload = function(){
         try {
-          var maxDim = 620;
-          var w = img.width, h = img.height;
-          if(w>h && w>maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
-          else if(h>w && h>maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
-          else if(w>maxDim){ w = maxDim; h = Math.round(h * maxDim / w); }
+          var w = img.naturalWidth || img.width;
+          var h = img.naturalHeight || img.height;
+          if(!w || !h){ cb(new Error('Immagine senza dimensione')); return; }
+          var scaleW = w, scaleH = h;
+          if(w > h && w > maxDim){ scaleW = maxDim; scaleH = Math.round(h * maxDim / w); }
+          else if(h > w && h > maxDim){ scaleH = maxDim; scaleW = Math.round(w * maxDim / h); }
+          else if(w > maxDim){ scaleW = maxDim; scaleH = Math.round(h * maxDim / w); }
 
-          canvas.width = w; canvas.height = h;
-          var ctx = canvas.getContext('2d');
-          ctx.clearRect(0,0,w,h);
-          ctx.drawImage(img,0,0,w,h);
-
-          // prova JPEG, fallback PNG
-          var q = parseFloat(desiredQuality);
-          if(isNaN(q) || q < 0.05) q = 0.25;
-          if(q>1) q = 1;
-
+          var c = document.createElement('canvas');
+          c.width = scaleW; c.height = scaleH;
+          var ctx = c.getContext('2d');
+          ctx.drawImage(img,0,0,scaleW,scaleH);
+          // try JPEG then PNG fallback
           var out = null;
-          try {
-            out = canvas.toDataURL('image/jpeg', q);
-          } catch(e) {
-            try { out = canvas.toDataURL('image/png'); } catch(e2) { out = dataURL; }
+          try { out = c.toDataURL('image/jpeg', jpegQuality); } catch(e){
+            try { out = c.toDataURL('image/png'); } catch(e2){ out = null; }
           }
-          // revokeObjectURL handled by caller if needed
-          try { preview.src = out; preview.className = preview.className.replace('hidden',''); } catch(e){}
+          if(!out){ cb(new Error('Conversione canvas->dataURL fallita')); return; }
           cb(null, out);
-        } catch(ex){ cb(ex); }
+        } catch(er){
+          cb(er);
+        }
       };
       img.onerror = function(){ cb(new Error('Impossibile caricare immagine (img.onerror)')); };
-      img.src = dataURL;
-    } catch(err){
-      cb(err);
-    }
+      // Important for blobs: set crossOrigin to anonymous may be required; but for local system images it's fine
+      try { img.crossOrigin = 'anonymous'; } catch(e){}
+      img.src = src;
+    } catch(e){ cb(e); }
   }
 
-  // Try to read the file using FileReader; on error call errCB so fallback can run
-  function tryFileReader(file, okCB, errCB){
-    if(!window.FileReader){ errCB(new Error('FileReader non disponibile')); return;}
+  // once we have a dataURL -> display preview, code, qr, links, store localStorage
+  function finalizeWithDataURL(dataURL){
+    try { preview.src = dataURL; show(preview); } catch(e){}
+    var code = genCode(codeLen);
+    codeText.innerText = code;
+    // save mapping locally
+    try { localStorage.setItem('smi_' + code, dataURL); } catch(e){}
+    // create quick download link
+    links.innerHTML = '';
+    var a = document.createElement('a'); a.href = dataURL; a.className = 'btnlink'; a.appendChild(document.createTextNode('Apri / Salva immagine'));
+    a.setAttribute('download','sharemiishot.jpg');
+    links.appendChild(a);
+    // attempt minimal QR: draw a QR by encoding small text (we won't generate full QR for large dataURI)
+    qrHolder.innerHTML = '';
     try {
-      var fr = new FileReader();
-      fr.onerror = function(e){ errCB(new Error('FileReader error')); };
-      fr.onload = function(ev){
-        try { okCB(ev.target.result); } catch(e){ errCB(e); }
-      };
-      fr.readAsDataURL(file);
-    } catch(e){
-      errCB(e);
-    }
-  }
-
-  // Try createObjectURL fallback
-  function tryObjectURL(file, okCB, errCB){
-    try {
-      var url = null;
-      if(window.URL && window.URL.createObjectURL){
-        url = window.URL.createObjectURL(file);
-      } else if(window.webkitURL && window.webkitURL.createObjectURL){
-        url = window.webkitURL.createObjectURL(file);
-      }
-      if(!url){ errCB(new Error('createObjectURL non disponibile')); return; }
-      // load image from url, then revoke
-      var img = new Image();
-      img.onload = function(){
-        try {
-          // convert to dataURL via canvas by drawing the image then toDataURL
-          var c = document.createElement('canvas');
-          var maxDim = 620;
-          var w = img.width, h = img.height;
-          if(w>h && w>maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
-          else if(h>w && h>maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
-          else if(w>maxDim){ w = maxDim; h = Math.round(h * maxDim / w); }
-          c.width = w; c.height = h;
-          var ctx = c.getContext('2d');
-          ctx.drawImage(img,0,0,w,h);
-          var q = parseFloat(quality.value); if(isNaN(q)||q<0.05) q=0.25; if(q>1) q=1;
-          var out = null;
-          try { out = c.toDataURL('image/jpeg', q); } catch(e) { try{ out = c.toDataURL('image/png'); } catch(e2){ out = null; } }
-          // revoke
-          try { if(window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url);
-                if(window.webkitURL && window.webkitURL.revokeObjectURL) window.webkitURL.revokeObjectURL(url); } catch(e){}
-          if(out) okCB(out); else errCB(new Error('Conversione objectURL->dataURL fallita'));
-        } catch(ex){ try { if(window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url); } catch(e){} errCB(ex); }
-      };
-      img.onerror = function(){ try { if(window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url); } catch(e){} errCB(new Error('Impossibile caricare objectURL')); };
-      img.src = url;
-    } catch(e){ errCB(e); }
-  }
-
-  // central file processing that tries FileReader then createObjectURL
-  function processSelectedFile(file){
-    if(!file){ status.innerHTML = 'Nessun file valido.'; generateBtn.disabled = true; return; }
-    status.innerHTML = 'File selezionato: ' + (file.name||'') + ' — ' + Math.round((file.size||0)/1024) + ' KB. Leggo...';
-    generateBtn.disabled = true;
-    lastDataURL = null;
-
-    // 1) try FileReader
-    tryFileReader(file, function(dataURL){
-      // success
-      compressAndPreview(dataURL, quality.value, function(err, compressed){
-        if(err){ status.innerHTML = 'Errore compressione: ' + (err.message||err); generateBtn.disabled = true; return; }
-        lastDataURL = compressed;
-        status.innerHTML = 'Immagine pronta (FileReader).';
-        generateBtn.disabled = false;
-      });
-    }, function(frErr){
-      // FileReader failed — try objectURL
-      status.innerHTML = 'FileReader fallito: ' + (frErr.message||frErr) + '. Provo createObjectURL...';
-      tryObjectURL(file, function(dataURL){
-        compressAndPreview(dataURL, quality.value, function(err, compressed){
-          if(err){ status.innerHTML = 'Errore compressione (objectURL): ' + (err.message||err); generateBtn.disabled = true; return; }
-          lastDataURL = compressed;
-          status.innerHTML = 'Immagine pronta (createObjectURL).';
-          generateBtn.disabled = false;
-        });
-      }, function(objErr){
-        // both failed — definitive fallback
-        status.innerHTML = 'Errore: impossibile leggere il file dal browser. (' + (objErr.message||objErr) + ')';
-        generateBtn.disabled = true;
-        // show clear fallback instructions (already visible in page)
-      });
-    });
-  }
-
-  // robust detection: change event + polling fallback for old UAs
-  if(fileInput){
-    fileInput.addEventListener('change', function(){
-      try {
-        var f = null;
-        if(fileInput.files && fileInput.files.length>0) f = fileInput.files[0];
-        processSelectedFile(f);
-      } catch(e){}
-    }, false);
-
-    // polling fallback (per Wii U e browser che non sparano change)
-    (function(){
-      var lastVal = fileInput.value || '';
-      setInterval(function(){
-        try {
-          var cur = fileInput.value || '';
-          if(cur && cur !== lastVal){
-            lastVal = cur;
-            var f = null;
-            if(fileInput.files && fileInput.files.length>0) f = fileInput.files[0];
-            // in browsers che non supportano files[], f will be null — but we still attempt
-            processSelectedFile(f);
-          }
-        } catch(e){}
-      }, 700);
-    })();
-  }
-
-  // Generate button click -> save to localStorage and produce QR or dataURL textarea
-  generateBtn.addEventListener('click', function(){
-    if(!lastDataURL){ alert('Immagine non pronta. Assicurati che l\'anteprima sia visibile.'); return; }
-    qrDiv.innerHTML = '';
-    dataDiv.className = dataDiv.className.replace('hidden','');
-    var approxKB = Math.round((lastDataURL.length * 3 / 4) / 1024);
-    var t = parseInt(thresholdKB.value,10); if(isNaN(t)) t = 32;
-    lastCode = genCode(6);
-    codeText.innerHTML = lastCode;
-
-    // try to store locally
-    try { localStorage.setItem('smi_' + lastCode, lastDataURL); } catch(e){ /* ignore */ }
-
-    // Try to generate a simple QR (we will fallback to showing dataURL if no QR)
-    try {
-      // Minimal QR: we will not attempt heavy QR encoding here for max compatibility.
-      // Instead: if size <= threshold render the dataURL text (user can open it), else render the code text.
-      if(approxKB <= t){
-        // If data small, put a link with dataURL; many phones open it directly.
-        var a = document.createElement('a'); a.href = lastDataURL; a.setAttribute('download','image.jpg');
-        a.appendChild(document.createTextNode('Apri immagine direttamente (tieni premuto per salvare)'));
-        qrDiv.appendChild(a);
-
-        // show dataURL in textarea as backup
-        dataOut.value = lastDataURL;
+      // if dataURL is small-ish, try to create QR for it (but many scanners struggle)
+      var approxKB = Math.round((dataURL.length * 3 / 4) / 1024);
+      if(approxKB <= 48){
+        // render a text area with the dataURL and a hint
+        var ta = document.createElement('textarea');
+        ta.className = 'dataout';
+        ta.readOnly = true;
+        ta.value = dataURL;
+        qrHolder.appendChild(ta);
+        var hint = document.createElement('div'); hint.className='note'; hint.innerHTML = 'QR non generato automaticamente: copia il testo sopra sul telefono o apri il link "Apri / Salva immagine".';
+        qrHolder.appendChild(hint);
       } else {
-        // big: show the code in a big textarea and message to enter it in device
-        var p = document.createElement('div'); p.className = 'note';
-        p.innerHTML = 'Immagine compressa ≈ ' + approxKB + ' KB, troppo grande per incapsularla. Inserisci il codice manualmente su un altro browser o copia il dataURL sottostante.';
-        qrDiv.appendChild(p);
-        dataOut.value = lastDataURL;
+        // big: don't embed in QR - show code and dataURL textarea
+        var ta2 = document.createElement('textarea');
+        ta2.className = 'dataout';
+        ta2.readOnly = true;
+        ta2.value = dataURL;
+        qrHolder.appendChild(ta2);
+        var hint2 = document.createElement('div'); hint2.className='note'; hint2.innerHTML = 'Immagine compressa ≈ ' + Math.round((dataURL.length*3/4)/1024) + ' KB — usa il link o copia il testo.';
+        qrHolder.appendChild(hint2);
       }
     } catch(e){
-      dataOut.value = lastDataURL;
+      // fallback
+      var ta3 = document.createElement('textarea'); ta3.className='dataout'; ta3.readOnly=true; ta3.value = dataURL; qrHolder.appendChild(ta3);
     }
+    show(resultArea);
+  }
 
-    result.className = result.className.replace('hidden','');
+  // main attempt: search DOM for candidate images, then process
+  function attemptGrabOnce(){
+    setStatus('Ricerca immagine nel DOM...');
+    // 1) candidate <img>
+    var img = findCandidateImage();
+    if(img && img.src){
+      setStatus('Trovata immagine nel DOM, la sto processando...');
+      processImageSrc(img.src, function(err, out){
+        if(err){
+          setStatus('Errore processing: ' + (err.message||err));
+        } else {
+          setStatus('Immagine processata correttamente.');
+          finalizeWithDataURL(out);
+        }
+      });
+      return true;
+    }
+    // 2) candidate background-image
+    var bg = findCandidateBgImage();
+    if(bg){
+      setStatus('Trovata immagine di sfondo, la sto processando...');
+      processImageSrc(bg, function(err,out){
+        if(err) setStatus('Errore processing background: ' + (err.message||err));
+        else { setStatus('Immagine processata correttamente.'); finalizeWithDataURL(out); }
+      });
+      return true;
+    }
+    // 3) some consoles may expose an <object> tag or plugin container: scan those for embed src
+    try {
+      var objs = document.getElementsByTagName('object');
+      for(var i=0;i<objs.length;i++){
+        var o = objs[i];
+        if(o.data && o.data.indexOf('screenshot') !== -1){ processImageSrc(o.data, function(err,out){ if(!err) finalizeWithDataURL(out); }); return true; }
+      }
+    } catch(e){}
+    return false;
+  }
+
+  // start polling: repeatedly attemptGrabOnce until found or timeout
+  function startPolling(){
+    if(poller) return;
+    pollStart = (new Date()).getTime();
+    setStatus('Avvio ricerca immagine: assicurati di aver messo in pausa e aperto il Browser dal menu HOME.');
+    poller = setInterval(function(){
+      try {
+        var found = attemptGrabOnce();
+        if(found){
+          clearInterval(poller); poller = null;
+          setStatus('Immagine trovata e processata.');
+          return;
+        }
+        var now = (new Date()).getTime();
+        if(now - pollStart > pollTimeoutMs){
+          clearInterval(poller); poller = null;
+          setStatus('Timeout ricerca immagine — non trovata. Segui il fallback nella pagina (HOME → Browser → riapri pagina).');
+          // show data fallback area
+          show(dataArea);
+        } else {
+          setStatus('Ricerca in corso... (' + Math.round((now-pollStart)/1000) + 's)');
+        }
+      } catch(e){
+        clearInterval(poller); poller = null;
+        setStatus('Errore durante ricerca: ' + (e.message||e));
+      }
+    }, pollIntervalMs);
+  }
+
+  function stopPolling(){
+    if(poller){ clearInterval(poller); poller = null; setStatus('Ricerca interrotta.'); }
+    else setStatus('Nessuna ricerca attiva.');
+  }
+
+  // attach handlers
+  grabBtn.addEventListener('click', function(){
+    // reset UI
+    hide(resultArea);
+    qrHolder.innerHTML='';
+    links.innerHTML='';
+    dataOut.value = '';
+    hide(dataArea);
+    startPolling();
   }, false);
 
-  // receiver
-  showBtn.addEventListener('click', function(){
-    var code = (codeIn.value||'').replace(/[^A-Z0-9]/ig,'').trim();
-    if(!code){ alert('Inserisci codice'); return; }
-    var key = 'smi_' + code;
-    var data = null;
-    try { data = localStorage.getItem(key); } catch(e){ data = null; }
-    if(data){
-      viewImg.src = data;
-      view.className = view.className.replace('hidden','');
-    } else {
-      alert('Immagine non trovata in questo browser. Se hai scannerizzato un dataURL, aprilo direttamente sul dispositivo.');
-    }
-  }, false);
+  stopPollBtn.addEventListener('click', function(){ stopPolling(); }, false);
 
-  // final note appended
-  var note = document.createElement('div'); note.className='note';
-  note.innerHTML = '<small>Se dopo tutto questo il browser ancora non legge: usa la procedura "Apri da gioco" o trasferisci l\'immagine su PC/telefono via SD. Questa pagina è fatta per massima compatibilità possibile senza server.</small>';
-  document.body.appendChild(note);
+  // also allow manual "process current DOM" (for debugging/test)
+  // expose attemptGrabOnce to global for debug (optional)
+  window.__sharemiishot_debug_attempt = attemptGrabOnce;
+
+  // small safety: show note if page is opened not from Wii U
+  try {
+    var ua = navigator.userAgent || '';
+    if(ua.toLowerCase().indexOf('nintendo') === -1){
+      // show a gentle note
+      var n = document.createElement('div'); n.className='note'; n.style.marginTop='8px';
+      n.innerHTML = 'Nota: stai usando questo tool fuori dalla Wii U. Il flusso nativo (HOME → pausa → Browser) va eseguito sulla console per poter trovare la screenshot automaticamente.';
+      document.body.insertBefore(n, document.getElementsByClassName('box')[0]);
+    }
+  } catch(e){}
 
 })(); // end
 </script>
