@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="utf-8"/>
@@ -16,28 +16,21 @@
   button.secondary{background:#777;margin-left:8px}
   button[disabled]{opacity:0.55;cursor:not-allowed}
   #preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
-  textarea.dataout{width:100%;height:120px}
-  .hidden{display:none}
   #logBox{border:1px solid #ccc;padding:8px;height:160px;overflow:auto;font-family:monospace;background:#f8f8f8;border-radius:6px;white-space:pre-wrap}
 </style>
 </head>
 <body>
 <header>
-  <img id="banner" src="sharemiishot.png" alt="banner ShareMiiShot" onerror="this.style.display='none'">
+  <img id="banner" src="sharemiishot.png" alt="ShareMiiShot Banner">
   <h1>ShareMiiShot — Wi-Fi Upload</h1>
 </header>
 
 <div class="box">
-  <div class="note">
-    Seleziona uno screenshot Wii U e invialo al server Python sulla tua rete locale.
-  </div>
-  <label>Seleziona immagine: <input type="file" id="fileInput" accept="image/jpeg"/></label>
+  <div class="note">Seleziona uno screenshot (.jpg) dalla Wii U e invialo direttamente al server Python.</div>
+  <input type="file" id="fileInput" accept="image/jpeg"/>
   <button id="sendBtn" disabled>Invia al server Wi-Fi</button>
-</div>
-
-<div class="box">
-  <div class="note"><strong>Anteprima:</strong></div>
-  <img id="preview" class="hidden" alt="Anteprima immagine"/>
+  <div id="status" class="note">Stato: pronto</div>
+  <img id="preview" style="display:none;" alt="Anteprima"/>
 </div>
 
 <div class="box">
@@ -46,65 +39,60 @@
 </div>
 
 <script>
-// ES5 puro
-var fileInput = document.getElementById('fileInput');
-var preview = document.getElementById('preview');
-var sendBtn = document.getElementById('sendBtn');
-var logBox = document.getElementById('logBox');
-var currentFile = null;
-
+// helper log
 function log(msg){
-  var now = new Date();
-  var hh=now.getHours(),mm=now.getMinutes(),ss=now.getSeconds();
-  if(mm<10) mm='0'+mm; if(ss<10) ss='0'+ss;
-  var line = '['+hh+':'+mm+':'+ss+'] ' + msg + '\n';
-  logBox.textContent += line;
-  logBox.scrollTop = logBox.scrollHeight;
+  try{
+    var now = new Date();
+    var hh=now.getHours(),mm=now.getMinutes(),ss=now.getSeconds();
+    if(mm<10) mm='0'+mm; if(ss<10) ss='0'+ss;
+    var out='['+hh+':'+mm+':'+ss+'] '+msg+'\n';
+    var lb=document.getElementById('logBox'); lb.textContent += out; lb.scrollTop = lb.scrollHeight;
+    document.getElementById('status').innerHTML='Stato: '+msg;
+  }catch(e){}
 }
 
-fileInput.addEventListener('change', function(){
+// elementi UI
+var fileInput=document.getElementById('fileInput');
+var sendBtn=document.getElementById('sendBtn');
+var preview=document.getElementById('preview');
+var currentFile=null;
+
+// file selezionato
+fileInput.addEventListener('change',function(){
   if(fileInput.files && fileInput.files.length>0){
-    currentFile = fileInput.files[0];
-    var reader = new FileReader();
-    reader.onload = function(e){
-      preview.src = e.target.result;
-      preview.className = '';
-      log('File pronto: ' + currentFile.name + ' (' + Math.round(currentFile.size/1024)+' KB)');
-      sendBtn.disabled = false;
-    };
-    reader.onerror = function(){ log('Errore lettura file'); sendBtn.disabled = true; };
-    reader.readAsDataURL(currentFile);
+    currentFile=fileInput.files[0];
+    sendBtn.disabled=false;
+    preview.style.display='block';
+    preview.src=URL.createObjectURL(currentFile);
+    log('File pronto: '+currentFile.name+' ('+Math.round(currentFile.size/1024)+' KB)');
   }
 }, false);
 
-sendBtn.addEventListener('click', function(){
-  if(!currentFile){
-    log('Nessun file da inviare');
-    return;
-  }
-  // Chiedi indirizzo del server
-  var serverIP = prompt('Inserisci IP del server Python (es: 192.168.x.x:8080):');
-  if(!serverIP) { log('Invio annullato'); return; }
-  try {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'http://' + serverIP, true);
-    xhr.setRequestHeader('Content-Type','application/octet-stream');
-    xhr.setRequestHeader('X-Filename', currentFile.name);
-    xhr.onreadystatechange = function(){
-      if(xhr.readyState==4){
-        if(xhr.status>=200 && xhr.status<300){
-          log('Immagine inviata con successo: ' + currentFile.name);
-          alert('Invio completato!');
-        } else {
-          log('Errore invio: status ' + xhr.status);
-          alert('Errore invio. Controlla server e rete.');
-        }
+// invio al server
+sendBtn.addEventListener('click',function(){
+  if(!currentFile) return;
+  var serverIP=prompt('Inserisci IP:porta server Python (es. 192.168.x.x:8080)');
+  if(!serverIP) return;
+
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','http://'+serverIP,true);
+  xhr.setRequestHeader('Content-Type','application/octet-stream');
+  xhr.setRequestHeader('X-Filename',currentFile.name);
+
+  xhr.onreadystatechange=function(){
+    if(xhr.readyState===4){
+      if(xhr.status>=200 && xhr.status<300){
+        alert('Immagine inviata correttamente: '+currentFile.name);
+        log('Invio completato con successo.');
+      } else {
+        alert('Errore invio. Status: '+xhr.status);
+        log('Errore invio, status: '+xhr.status);
       }
-    };
-    xhr.onerror = function(){ log('Errore network durante invio'); alert('Errore network durante invio'); };
-    xhr.send(currentFile);
-    log('Invio in corso: ' + currentFile.name);
-  } catch(e){ log('Eccezione invio: ' + (e.message||e)); }
+    }
+  };
+  xhr.onerror=function(){ alert('Errore network durante invio'); log('Errore network'); };
+  xhr.send(currentFile);
+  log('Invio in corso al server '+serverIP+' ...');
 });
 </script>
 </body>
