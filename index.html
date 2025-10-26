@@ -5,74 +5,31 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>ShareMiiShot</title>
 <style>
-  body { font-family: Arial, sans-serif; max-width: 800px; margin: 16px auto; padding: 12px; color: #111; background: #fff; }
-  header img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
-  h1 { font-size: 1.1rem; margin: 12px 0; }
-  .box { border: 1px dashed #bbb; padding: 12px; border-radius: 8px; margin: 12px 0; background: #fafafa; }
-  label { display:block; margin: 8px 0; }
-  input[type=text], input[type=file] { width: 100%; padding: 6px; margin-top: 2px; }
-  button { padding: 10px 14px; font-size: 1rem; border-radius: 6px; border:0; background:#0b84ff; color:#fff; cursor:pointer; }
-  #status { margin-top: 8px; color:#333; }
+body { font-family: Arial; max-width:800px; margin:16px auto; padding:12px; background:#fff; color:#111;}
+header img { width:100%; max-height:200px; object-fit:cover; border-radius:6px; border:1px solid #ddd; }
+h1 { font-size:1.2rem; margin:12px 0; }
+.box { border:1px dashed #bbb; padding:12px; border-radius:8px; margin:12px 0; background:#fafafa; }
+input[type=text], input[type=file], button { width:100%; padding:6px; margin-top:4px; }
+button { background:#0b84ff; color:#fff; border:0; border-radius:6px; font-size:1rem; cursor:pointer; padding:10px; }
 </style>
 </head>
 <body>
 
 <header>
-  <img src="sharemiishot.png" alt="ShareMiiShot Banner"/>
-  <h1>ShareMiiShot</h1>
+<img src="sharemiishot.png" alt="Banner ShareMiiShot"/>
+<h1>ShareMiiShot</h1>
 </header>
 
 <div class="box">
-  <p>Seleziona l’immagine della Wii U e inviala direttamente al server Python.</p>
+<p>Seleziona l’immagine della Wii U e inviala al server.</p>
 
-  <label>IP locale (default 192.168.xx.xx): <input type="text" id="serverIp" value="192.168.1.100" /></label>
-  <label>Porta (default 8080): <input type="text" id="serverPort" value="8080" /></label>
-  <label>Seleziona file: <input type="file" id="fileInput" accept="image/jpeg"/></label>
-  <button id="sendBtn">Invia immagine</button>
-
-  <div id="status">Stato: pronto</div>
+<form method="POST" action="cgi-bin/upload.cgi" enctype="multipart/form-data">
+<label>IP locale: <input type="text" value="192.168.1.100" disabled/></label>
+<label>Porta: <input type="text" value="8080" disabled/></label>
+<label>Seleziona file: <input type="file" name="file" accept="image/jpeg"/></label>
+<button type="submit">Invia immagine</button>
+</form>
 </div>
-
-<script>
-(function(){
-  var status = document.getElementById('status');
-  var fileInput = document.getElementById('fileInput');
-  var ipInput = document.getElementById('serverIp');
-  var portInput = document.getElementById('serverPort');
-  var btn = document.getElementById('sendBtn');
-
-  btn.addEventListener('click', function(){
-    var file = fileInput.files[0];
-    if(!file){ alert("Seleziona un file"); return; }
-    var ip = ipInput.value.trim();
-    var port = portInput.value.trim() || "8080";
-    if(!ip){ alert("Inserisci IP valido"); return; }
-
-    status.innerText = "Invio in corso...";
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "http://" + ip + ":" + port + "/", true);
-    xhr.setRequestHeader("X-Filename", file.name);
-
-    xhr.onload = function() {
-      if(xhr.status === 200){
-        status.innerText = "Invio completato! Verifica sul server.";
-        alert("Invio completato: " + xhr.responseText);
-      } else {
-        status.innerText = "Errore durante l'invio.";
-        alert("Errore: " + xhr.responseText);
-      }
-    };
-
-    xhr.onerror = function() {
-      status.innerText = "Errore network durante invio";
-      alert("Errore network durante invio");
-    };
-
-    xhr.send(file);
-  });
-})();
-</script>
 
 </body>
 </html>
