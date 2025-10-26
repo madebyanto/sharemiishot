@@ -24,6 +24,7 @@ button { padding: 10px 14px; font-size: 1rem; border-radius: 6px; border:0; back
 
 <div class="box">
 <p>Select your Wii U/3DS image and upload it directly to the Python server.</p>
+    <p><strong>NEVER SHARE YOUR IP & PORT</strong></p>
 
 <label>Latest IP digits (192.168.x.x): <input type="text" id="ipEnd" value="x.x"/></label>
 <label>Select file: <input type="file" id="fileInput" accept="image/jpeg"/></label>
@@ -31,12 +32,12 @@ button { padding: 10px 14px; font-size: 1rem; border-radius: 6px; border:0; back
 
 <div id="status">Status: Ready</div>
 </div>
-<footer>Made with ❤️ by Anto</footer>
+<footer>Made with ❤️ by Anto - v1.0.0</footer>
 <script>
 document.getElementById('sendBtn').addEventListener('click', function(){
     var ipEnd = document.getElementById('ipEnd').value.trim();
     var file = document.getElementById('fileInput').files[0];
-    if(!file){ alert("Seleziona un file"); return; }
+    if(!file){ alert("Select a file"); return; }
     var ip = "192.168." + ipEnd;
     var port = "8080";
     var xhr = new XMLHttpRequest();
@@ -45,11 +46,11 @@ document.getElementById('sendBtn').addEventListener('click', function(){
         if(xhr.status == 200) {
             document.getElementById('status').innerText = "Submission completed!";
         } else {
-            alert("Submission completed!");
+            alert("Network error while sending ;-(");
         }
     };
     xhr.onerror = function(){
-        alert("Network error while sending ;-(");
+        alert("Submission completed!");
     };
     xhr.send(file);
     document.getElementById('status').innerText = "Sending...";
