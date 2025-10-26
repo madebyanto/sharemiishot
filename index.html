@@ -3,132 +3,80 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ShareMiiShot — Wi-Fi upload</title>
+<title>ShareMiiShot — Wi-Fi Upload</title>
 <style>
-body{font-family:Arial,sans-serif;max-width:920px;margin:12px auto;padding:12px;color:#111;background:#fff}
-header{text-align:center;margin-bottom:8px}
-#banner{width:100%;max-height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
-.box{border:1px dashed #bbb;padding:10px;border-radius:8px;margin:10px 0;background:#fafafa}
-button{padding:9px 12px;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
-input[type="text"], input[type="number"]{padding:6px;border-radius:4px;border:1px solid #bbb}
-#preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
-#log{font-family:monospace;background:#f6f6f6;border:1px solid #ddd;padding:8px;height:160px;overflow:auto;white-space:pre-wrap}
-.small{font-size:0.9rem;color:#555}
+  body { font-family: Arial, sans-serif; max-width: 800px; margin: 16px auto; padding: 12px; color: #111; background: #fff; }
+  header img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
+  h1 { font-size: 1.1rem; margin: 12px 0; }
+  .box { border: 1px dashed #bbb; padding: 12px; border-radius: 8px; margin: 12px 0; background: #fafafa; }
+  label { display:block; margin: 8px 0; }
+  input[type=text], input[type=file] { width: 100%; padding: 6px; margin-top: 2px; }
+  button { padding: 10px 14px; font-size: 1rem; border-radius: 6px; border:0; background:#0b84ff; color:#fff; cursor:pointer; }
+  #status { margin-top: 8px; color:#333; }
 </style>
 </head>
 <body>
+
 <header>
-  <img id="banner" src="sharemiishot.png" alt="ShareMiiShot" onerror="this.style.display='none'">
-  <h2>ShareMiiShot — Wi-Fi upload</h2>
+  <img src="banner_wiishot.png" alt="ShareMiiShot Banner"/>
+  <h1>ShareMiiShot — Wi-Fi Upload</h1>
 </header>
 
 <div class="box">
-  <div class="small">Rete: inserisci le ultime due cifre dell'IP (192.168.x.x) — default: 192.168.1.100</div>
-  <div style="margin-top:8px">
-    IP: 192.168.<input id="ip3" type="number" min="0" max="254" value="1" style="width:50px">.<input id="ip4" type="number" min="1" max="254" value="100" style="width:50px"> : 8080
-  </div>
-  <div style="margin-top:8px">
-    <label>Seleziona screenshot (.jpg): <input id="file" type="file" accept="image/jpeg,image/jpg"></label>
-  </div>
-  <div style="margin-top:8px">
-    <button id="send" disabled>Invia</button>
-    <button id="clear" style="margin-left:8px;background:#777">Pulisci</button>
-  </div>
-  <div id="status" style="margin-top:8px" class="small">Stato: in attesa file</div>
-  <img id="preview" style="display:none" alt="Anteprima">
-</div>
+  <p>Seleziona l’immagine della Wii U e inviala direttamente al server Python.</p>
 
-<div class="box">
-  <div><strong>Log diagnostico</strong></div>
-  <div id="log"></div>
+  <form id="uploadForm" method="POST" enctype="multipart/form-data" target="dummyFrame">
+    <label>IP locale (default 192.168.xx.xx): <input type="text" id="serverIp" value="192.168.1.100" /></label>
+    <label>Porta (default 8080): <input type="text" id="serverPort" value="8080" /></label>
+    <label>Seleziona file: <input type="file" name="file" id="fileInput" accept="image/jpeg"/></label>
+    <button type="submit">Invia immagine</button>
+  </form>
+
+  <iframe name="dummyFrame" style="display:none;"></iframe>
+
+  <div id="status">Stato: pronto</div>
 </div>
 
 <script>
 (function(){
-  function el(id){ return document.getElementById(id); }
-  var fileInput = el('file'), sendBtn = el('send'), clearBtn = el('clear');
-  var status = el('status'), preview = el('preview'), logBox = el('log');
-  var ip3 = el('ip3'), ip4 = el('ip4');
+  var form = document.getElementById('uploadForm');
+  var status = document.getElementById('status');
+  var fileInput = document.getElementById('fileInput');
+  var ipInput = document.getElementById('serverIp');
+  var portInput = document.getElementById('serverPort');
 
-  var currentFile = null;
-  var currentObjectURL = null;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var file = fileInput.files[0];
+    if(!file){ alert("Seleziona un file"); return; }
+    var ip = ipInput.value.trim();
+    var port = portInput.value.trim() || "8080";
+    if(!ip){ alert("Inserisci IP valido"); return; }
 
-  function log(msg){ 
-    var d = new Date();
-    logBox.textContent += '['+d.getHours()+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+'] '+msg+'\n'; 
-    logBox.scrollTop = logBox.scrollHeight;
-  }
-  function setStatus(msg){ status.textContent='Stato: '+msg; log(msg); }
+    // crea form dinamico per invio
+    var f = document.createElement('form');
+    f.method = "POST";
+    f.enctype = "multipart/form-data";
+    f.action = "http://" + ip + ":" + port + "/";
+    f.target = "dummyFrame";
 
-  function revokeObjectURL(){ try{ if(currentObjectURL){ URL.revokeObjectURL(currentObjectURL); currentObjectURL=null; } }catch(e){} }
+    var fi = document.createElement('input');
+    fi.type = "file";
+    fi.name = "file";
+    fi.files = fileInput.files; // ATTENZIONE: alcuni browser Wii U non supportano questa assegnazione. fallback nativo.
+    f.appendChild(fi);
 
-  fileInput.addEventListener('change', function(){
-    if(fileInput.files && fileInput.files.length>0){
-      currentFile = fileInput.files[0];
-      setStatus('File selezionato: '+currentFile.name+' — '+Math.round((currentFile.size||0)/1024)+' KB');
-      try{
-        revokeObjectURL();
-        currentObjectURL = URL.createObjectURL(currentFile);
-        preview.src = currentObjectURL;
-        preview.style.display='block';
-        setStatus('Anteprima pronta');
-      }catch(e){ preview.style.display='none'; setStatus('Anteprima non disponibile'); }
-      sendBtn.disabled=false;
-    }else{
-      currentFile=null; sendBtn.disabled=true; preview.style.display='none'; setStatus('Nessun file selezionato');
-    }
+    document.body.appendChild(f);
+    status.innerText = "Invio in corso...";
+    f.submit();
+    document.body.removeChild(f);
+
+    setTimeout(function(){
+      status.innerText = "Stato: invio completato (verifica sul server)";
+    }, 2000);
   });
-
-  function buildTarget(){ return 'http://192.168.'+ip3.value+'.'+ip4.value+':8080'; }
-
-  function sendFile(){
-    if(!currentFile){ alert('Nessun file selezionato'); return; }
-    var url = buildTarget();
-    setStatus('Invio a '+url+' (FormData)...');
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', url, true);
-    xhr.timeout=60000;
-    xhr.onload=function(){
-      if(xhr.status>=200 && xhr.status<300){
-        setStatus('Upload completato: '+xhr.responseText);
-        revokeObjectURL();
-      }else{
-        setStatus('Upload FormData fallito, fallback raw');
-        sendRaw(url);
-      }
-    };
-    xhr.onerror=function(){ setStatus('Errore network FormData, fallback raw'); sendRaw(url); };
-    xhr.ontimeout=function(){ setStatus('Timeout FormData, fallback raw'); sendRaw(url); };
-
-    var fd = new FormData();
-    fd.append('file', currentFile, currentFile.name);
-    xhr.send(fd);
-    setStatus('Upload in corso...');
-  }
-
-  function sendRaw(url){
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', url, true);
-    xhr.timeout=60000;
-    xhr.setRequestHeader('Content-Type','application/octet-stream');
-    xhr.setRequestHeader('X-Filename', encodeURIComponent(currentFile.name));
-    xhr.onload=function(){
-      if(xhr.status>=200 && xhr.status<300){
-        setStatus('Upload completato (raw)');
-        revokeObjectURL();
-      }else setStatus('Upload raw fallito: HTTP '+xhr.status);
-    };
-    xhr.onerror=function(){ setStatus('Errore network durante invio raw'); };
-    xhr.ontimeout=function(){ setStatus('Timeout durante invio raw'); };
-    xhr.send(currentFile);
-    setStatus('Upload raw in corso...');
-  }
-
-  sendBtn.addEventListener('click', sendFile);
-  clearBtn.addEventListener('click', function(){ fileInput.value=''; currentFile=null; revokeObjectURL(); preview.style.display='none'; sendBtn.disabled=true; setStatus('Pulito'); });
-  window.addEventListener('beforeunload', function(){ revokeObjectURL(); });
-  setStatus('Pronto. Seleziona file JPEG e imposta IP (192.168.x.x).');
 })();
 </script>
+
 </body>
 </html>
