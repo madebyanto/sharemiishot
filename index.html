@@ -1,99 +1,106 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>ShareMiiShot — Wi-Fi Upload</title>
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;max-width:900px;margin:16px auto;padding:12px;color:#111;background:#fff}
-  header{display:block;margin-bottom:10px;text-align:center}
-  #banner{width:100%;max-height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
-  h1{font-size:1.05rem;margin:8px 0}
-  .box{border:1px dashed #bbb;padding:12px;border-radius:8px;margin:12px 0;background:#fafafa}
-  .note{font-size:0.95rem;color:#333;margin:8px 0}
-  .muted{color:#666;font-size:0.9rem}
-  button{padding:10px 14px;font-size:1rem;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
-  button.secondary{background:#777;margin-left:8px}
-  button[disabled]{opacity:0.55;cursor:not-allowed}
-  #preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
-  #logBox{border:1px solid #ccc;padding:8px;height:160px;overflow:auto;font-family:monospace;background:#f8f8f8;border-radius:6px;white-space:pre-wrap}
+body{font-family:Arial,sans-serif;max-width:900px;margin:16px auto;padding:12px;color:#111;background:#fff}
+header{display:block;margin-bottom:10px}
+#banner{width:100%;max-height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
+h1{font-size:1.05rem;margin:8px 0}
+.box{border:1px dashed #bbb;padding:12px;border-radius:8px;margin:12px 0;background:#fafafa}
+.note{font-size:0.95rem;color:#333;margin:8px 0}
+button{padding:10px 14px;font-size:1rem;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
+button.secondary{background:#777;margin-left:8px}
+#preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
+#logBox{border:1px solid #ccc;padding:8px;height:160px;overflow:auto;font-family:monospace;background:#f8f8f8;border-radius:6px;white-space:pre-wrap}
 </style>
 </head>
 <body>
 <header>
-  <img id="banner" src="sharemiishot.png" alt="ShareMiiShot Banner">
-  <h1>ShareMiiShot — Wi-Fi Upload</h1>
+<img id="banner" src="sharemiishot.png" alt="ShareMiiShot Banner" onerror="this.style.display='none'"/>
+<h1>ShareMiiShot — Wi-Fi Upload</h1>
 </header>
 
 <div class="box">
-  <div class="note">Seleziona uno screenshot (.jpg) dalla Wii U e invialo direttamente al server Python.</div>
-  <input type="file" id="fileInput" accept="image/jpeg"/>
-  <button id="sendBtn" disabled>Invia al server Wi-Fi</button>
-  <div id="status" class="note">Stato: pronto</div>
-  <img id="preview" style="display:none;" alt="Anteprima"/>
+<label>Seleziona immagine: <input id="fileInput" type="file" accept="image/*"/></label>
+<div style="margin-top:8px">
+<button id="sendBtn" disabled>Invia al server Wi-Fi</button>
+</div>
+<div id="status" class="note">Stato: pronto</div>
+<img id="preview" class="hidden" alt="Anteprima immagine"/>
 </div>
 
 <div class="box">
-  <div class="note"><strong>Log diagnostico:</strong></div>
-  <div id="logBox"></div>
+<div class="note"><strong>Log diagnostico:</strong></div>
+<div id="logBox"></div>
 </div>
 
 <script>
-// helper log
-function log(msg){
-  try{
-    var now = new Date();
-    var hh=now.getHours(),mm=now.getMinutes(),ss=now.getSeconds();
-    if(mm<10) mm='0'+mm; if(ss<10) ss='0'+ss;
-    var out='['+hh+':'+mm+':'+ss+'] '+msg+'\n';
-    var lb=document.getElementById('logBox'); lb.textContent += out; lb.scrollTop = lb.scrollHeight;
-    document.getElementById('status').innerHTML='Stato: '+msg;
-  }catch(e){}
+function get(id){ return document.getElementById(id); }
+function log(msg){ var lb=get('logBox'); var now=new Date(); var t=now.getHours()+':'+now.getMinutes()+':'+now.getSeconds(); lb.textContent+='['+t+'] '+msg+'\n'; lb.scrollTop=lb.scrollHeight; }
+function setStatus(msg){ get('status').textContent='Stato: '+msg; log(msg); }
+
+var fileInput=get('fileInput'), sendBtn=get('sendBtn'), preview=get('preview');
+var currentDataURL=null;
+
+function resizeAndCompress(file, callback){
+  var reader=new FileReader();
+  reader.onerror=function(){ callback(new Error('FileReader error')); };
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var MAX=620, w=img.width, h=img.height;
+      if(w>h && w>MAX){ h=Math.round(h*MAX/w); w=MAX; }
+      else if(h>=w && h>MAX){ w=Math.round(w*MAX/h); h=MAX; }
+      var canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+      var ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+      try{
+        var dataURL=canvas.toDataURL('image/jpeg',0.25);
+        callback(null,dataURL);
+      }catch(e){ callback(e); }
+    };
+    img.onerror=function(){ callback(new Error('Errore caricamento immagine')); };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
-// elementi UI
-var fileInput=document.getElementById('fileInput');
-var sendBtn=document.getElementById('sendBtn');
-var preview=document.getElementById('preview');
-var currentFile=null;
-
-// file selezionato
-fileInput.addEventListener('change',function(){
-  if(fileInput.files && fileInput.files.length>0){
-    currentFile=fileInput.files[0];
+fileInput.addEventListener('change', function(){
+  var f=fileInput.files[0];
+  if(!f){ setStatus('Nessun file selezionato'); sendBtn.disabled=true; return; }
+  setStatus('File selezionato: '+f.name+' ('+Math.round(f.size/1024)+' KB)');
+  resizeAndCompress(f,function(err,dataURL){
+    if(err){ setStatus('Errore processamento file: '+(err.message||err)); sendBtn.disabled=true; return; }
+    currentDataURL=dataURL;
+    preview.src=dataURL;
+    preview.className='';
     sendBtn.disabled=false;
-    preview.style.display='block';
-    preview.src=URL.createObjectURL(currentFile);
-    log('File pronto: '+currentFile.name+' ('+Math.round(currentFile.size/1024)+' KB)');
-  }
-}, false);
-
-// invio al server
-sendBtn.addEventListener('click',function(){
-  if(!currentFile) return;
-  var serverIP=prompt('Inserisci IP:porta server Python (es. 192.168.x.x:8080)');
-  if(!serverIP) return;
-
-  var xhr=new XMLHttpRequest();
-  xhr.open('POST','http://'+serverIP,true);
-  xhr.setRequestHeader('Content-Type','application/octet-stream');
-  xhr.setRequestHeader('X-Filename',currentFile.name);
-
-  xhr.onreadystatechange=function(){
-    if(xhr.readyState===4){
-      if(xhr.status>=200 && xhr.status<300){
-        alert('Immagine inviata correttamente: '+currentFile.name);
-        log('Invio completato con successo.');
-      } else {
-        alert('Errore invio. Status: '+xhr.status);
-        log('Errore invio, status: '+xhr.status);
-      }
-    }
-  };
-  xhr.onerror=function(){ alert('Errore network durante invio'); log('Errore network'); };
-  xhr.send(currentFile);
-  log('Invio in corso al server '+serverIP+' ...');
+    setStatus('Anteprima pronta. Premi "Invia al server Wi-Fi"');
+  });
 });
+
+sendBtn.addEventListener('click', function(){
+  if(!currentDataURL){ setStatus('Nessuna immagine da inviare'); return; }
+  var ip=prompt('Inserisci IP server (es. 192.168.1.10)'); if(!ip) return;
+  var port=prompt('Inserisci porta server (es. 8080)'); if(!port) return;
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','http://'+ip+':'+port,true);
+  xhr.onload=function(){ if(xhr.status>=200 && xhr.status<300){ setStatus('Immagine inviata con successo'); alert('Immagine inviata!'); } else { setStatus('Errore invio. Status: '+xhr.status); alert('Errore invio. Status: '+xhr.status); } };
+  xhr.onerror=function(){ setStatus('Errore network durante invio'); alert('Errore network durante invio'); };
+  var blob=dataURLtoBlob(currentDataURL);
+  var formData=new FormData();
+  formData.append('file',blob,'sharemiishot.jpg');
+  xhr.send(formData);
+  setStatus('Invio in corso...');
+});
+
+function dataURLtoBlob(dataURL){
+  var parts=dataURL.split(','), meta=parts[0].match(/:(.*?);/)[1], binStr=atob(parts[1]), len=binStr.length, u8arr=new Uint8Array(len);
+  for(var i=0;i<len;i++){ u8arr[i]=binStr.charCodeAt(i); }
+  return new Blob([u8arr],{type:meta});
+}
 </script>
 </body>
 </html>
