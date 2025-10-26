@@ -3,6 +3,7 @@ import http.server
 import socketserver
 import cgi
 import os
+import shutil
 import threading
 import time
 import socket
@@ -39,8 +40,11 @@ class ImageHandler(http.server.CGIHTTPRequestHandler):
                 filename = fileitem.filename or f"image_{int(time.time())}.jpg"
                 filename = os.path.basename(filename)
                 filepath = os.path.join(SAVE_DIR, filename)
+
+                # Scrive correttamente il file
                 with open(filepath, 'wb') as f:
-                    f.write(fileitem.file.read())
+                    shutil.copyfileobj(fileitem.file, f)
+
                 received_files.append(filepath)
                 print(f"IMMAGINE RICEVUTA: {filepath}")
                 self.send_response(200)
@@ -78,12 +82,10 @@ def main():
     finally:
         httpd.server_close()
 
+    # Ora il file è già salvato correttamente, non serve “scaricarlo di nuovo”
+    print("Files ricevuti correttamente:")
     for f in received_files:
-        choice = input(f"Vuoi scaricare {f}? [Y/N]: ").strip().upper()
-        if choice == 'Y':
-            print(f"Immagine salvata: {os.path.abspath(f)}")
-        else:
-            print(f"Immagine ignorata: {f}")
+        print(f" - {f}")
 
 if __name__ == "__main__":
     main()
