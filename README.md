@@ -7,7 +7,7 @@ ShareMiiShot is a web service for Wii U and 3DS that lets you share images betwe
 
 It’s super simple!  
 
-1. Download the Python code (`main.py`) and run it using an IDE (e.g., VSCode on PC or Pydroid on Android).  
+1. Download the zip file, extract it and run the Python code (`server.py`) using an IDE (e.g., VSCode, or directly on Linux terminal).  
 2. Agree to start a local server on port `:8080`. For security reasons, the server will automatically shut down after 5 minutes.  
 3. On your Wii U/3DS, open the [ShareMiiShot website](http://sharemiishot.aurastudioitalia.it) and select the image you want to send.  
 4. Click **"Send to Wi-Fi Server"** and wait a few seconds.  
@@ -18,4 +18,6 @@ It’s super simple!
 
 > Transfer speed depends on your connection, but the service works well even on slower connections. A 1 Mbps connection is sufficient.  
 
-> The Wii U/3DS browser is a bit outdated, so some minor issues may occur after web app updates.  
+> The Wii U/3DS browser is a bit outdated, so some minor issues may occur after web app updates.
+
+> If the file received succesfully but the Wii U/3DS browser says "Network error" (or something like this), ignore.
