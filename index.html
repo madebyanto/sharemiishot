@@ -3,38 +3,35 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ShareMiiShot — Wi-Fi (no FileReader)</title>
+<title>ShareMiiShot — Wi-Fi upload</title>
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;max-width:920px;margin:12px auto;padding:12px;color:#111;background:#fff}
-  header{text-align:center;margin-bottom:8px}
-  #banner{width:100%;max-height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
-  .box{border:1px dashed #bbb;padding:10px;border-radius:8px;margin:10px 0;background:#fafafa}
-  button{padding:9px 12px;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
-  input[type="text"], input[type="number"]{padding:6px;border-radius:4px;border:1px solid #bbb}
-  #preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
-  #log{font-family:monospace;background:#f6f6f6;border:1px solid #ddd;padding:8px;height:160px;overflow:auto;white-space:pre-wrap}
-  .small{font-size:0.9rem;color:#555}
+body{font-family:Arial,sans-serif;max-width:920px;margin:12px auto;padding:12px;color:#111;background:#fff}
+header{text-align:center;margin-bottom:8px}
+#banner{width:100%;max-height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
+.box{border:1px dashed #bbb;padding:10px;border-radius:8px;margin:10px 0;background:#fafafa}
+button{padding:9px 12px;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
+input[type="text"], input[type="number"]{padding:6px;border-radius:4px;border:1px solid #bbb}
+#preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
+#log{font-family:monospace;background:#f6f6f6;border:1px solid #ddd;padding:8px;height:160px;overflow:auto;white-space:pre-wrap}
+.small{font-size:0.9rem;color:#555}
 </style>
 </head>
 <body>
 <header>
-  <!-- Metti sharemiishot.png nella stessa cartella: immagine 2000x500 sarà ridimensionata -->
   <img id="banner" src="sharemiishot.png" alt="ShareMiiShot" onerror="this.style.display='none'">
-  <h2>ShareMiiShot — Wi-Fi upload (NO FileReader)</h2>
+  <h2>ShareMiiShot — Wi-Fi upload</h2>
 </header>
 
 <div class="box">
-  <div class="small">Rete: imposta il prefisso (es. <code>192.168.1.</code>) e poi le ultime 1-2 cifre (es. <code>100</code>) — oppure inserisci l'IP completo</div>
+  <div class="small">Rete: inserisci le ultime due cifre dell'IP (192.168.x.x) — default: 192.168.1.100</div>
   <div style="margin-top:8px">
-    Prefisso: <input id="ipPrefix" type="text" value="192.168.1." style="width:130px">
-    Ultimo ottetto: <input id="ipLast" type="number" min="1" max="254" value="" style="width:80px">
-    <button id="useLocalBtn">Usa IP locale (se possibile)</button>
+    IP: 192.168.<input id="ip3" type="number" min="0" max="254" value="1" style="width:50px">.<input id="ip4" type="number" min="1" max="254" value="100" style="width:50px"> : 8080
   </div>
   <div style="margin-top:8px">
     <label>Seleziona screenshot (.jpg): <input id="file" type="file" accept="image/jpeg,image/jpg"></label>
   </div>
   <div style="margin-top:8px">
-    <button id="send" disabled>Invia (FormData → fallback raw)</button>
+    <button id="send" disabled>Invia</button>
     <button id="clear" style="margin-left:8px;background:#777">Pulisci</button>
   </div>
   <div id="status" style="margin-top:8px" class="small">Stato: in attesa file</div>
@@ -47,167 +44,90 @@
 </div>
 
 <script>
-/* Puro ES5 — Nessun FileReader per l'upload. */
 (function(){
   function el(id){ return document.getElementById(id); }
-  var ipPrefix = el('ipPrefix'), ipLast = el('ipLast'), useLocalBtn = el('useLocalBtn');
   var fileInput = el('file'), sendBtn = el('send'), clearBtn = el('clear');
   var status = el('status'), preview = el('preview'), logBox = el('log');
+  var ip3 = el('ip3'), ip4 = el('ip4');
 
   var currentFile = null;
   var currentObjectURL = null;
 
-  function log(msg){
-    try {
-      var d = new Date();
-      var hh = d.getHours(), mm = d.getMinutes(), ss = d.getSeconds();
-      if(mm<10) mm='0'+mm; if(ss<10) ss='0'+ss;
-      logBox.textContent += '['+hh+':'+mm+':'+ss+'] '+msg + '\n';
-      logBox.scrollTop = logBox.scrollHeight;
-    } catch(e){}
+  function log(msg){ 
+    var d = new Date();
+    logBox.textContent += '['+d.getHours()+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+'] '+msg+'\n'; 
+    logBox.scrollTop = logBox.scrollHeight;
   }
-  function setStatus(msg){ try{ status.textContent = 'Stato: ' + msg; }catch(e){} log(msg); }
+  function setStatus(msg){ status.textContent='Stato: '+msg; log(msg); }
 
-  function revokeObjectURL(){ try{ if(currentObjectURL){ if(window.URL && URL.revokeObjectURL) URL.revokeObjectURL(currentObjectURL); currentObjectURL=null; } }catch(e){ log('revoke err: '+(e.message||e)); } }
+  function revokeObjectURL(){ try{ if(currentObjectURL){ URL.revokeObjectURL(currentObjectURL); currentObjectURL=null; } }catch(e){} }
 
-  // prova recuperare l'IP locale suggerito (non sempre disponibile su Wii U)
-  useLocalBtn.addEventListener('click', function(){
-    // In browser non è possibile ottenere IP locale via JS in modo cross-browser.
-    // Qui mostriamo un suggerimento commentato: lasciare vuoto è ok.
-    alert('Se non conosci l\'IP locale, esegui lo script Python sul PC e annota l\'IP mostrato (es. 192.168.1.100). Inseriscilo qui.');
-  }, false);
-
-  // gestione selezione file: NON usare FileReader; usa createObjectURL per anteprima (se supportato)
   fileInput.addEventListener('change', function(){
-    try {
-      if(fileInput.files && fileInput.files.length > 0){
-        currentFile = fileInput.files[0];
-        setStatus('File selezionato: ' + (currentFile.name || '') + ' — ' + Math.round((currentFile.size||0)/1024) + ' KB');
-        // anteprima tramite objectURL (ottimale)
-        try {
-          revokeObjectURL();
-          if(window.URL && URL.createObjectURL){
-            currentObjectURL = URL.createObjectURL(currentFile);
-            preview.src = currentObjectURL;
-            preview.style.display = 'block';
-            setStatus('Anteprima via objectURL mostrata');
-          } else {
-            preview.style.display = 'none';
-            setStatus('Anteprima non disponibile (no createObjectURL)');
-          }
-        } catch(e){
-          log('objectURL error: '+(e.message||e));
-          preview.style.display = 'none';
-        }
-        sendBtn.disabled = false;
-      } else {
-        currentFile = null;
-        sendBtn.disabled = true;
-        preview.style.display = 'none';
-        setStatus('Nessun file selezionato');
+    if(fileInput.files && fileInput.files.length>0){
+      currentFile = fileInput.files[0];
+      setStatus('File selezionato: '+currentFile.name+' — '+Math.round((currentFile.size||0)/1024)+' KB');
+      try{
+        revokeObjectURL();
+        currentObjectURL = URL.createObjectURL(currentFile);
+        preview.src = currentObjectURL;
+        preview.style.display='block';
+        setStatus('Anteprima pronta');
+      }catch(e){ preview.style.display='none'; setStatus('Anteprima non disponibile'); }
+      sendBtn.disabled=false;
+    }else{
+      currentFile=null; sendBtn.disabled=true; preview.style.display='none'; setStatus('Nessun file selezionato');
+    }
+  });
+
+  function buildTarget(){ return 'http://192.168.'+ip3.value+'.'+ip4.value+':8080'; }
+
+  function sendFile(){
+    if(!currentFile){ alert('Nessun file selezionato'); return; }
+    var url = buildTarget();
+    setStatus('Invio a '+url+' (FormData)...');
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.timeout=60000;
+    xhr.onload=function(){
+      if(xhr.status>=200 && xhr.status<300){
+        setStatus('Upload completato: '+xhr.responseText);
+        revokeObjectURL();
+      }else{
+        setStatus('Upload FormData fallito, fallback raw');
+        sendRaw(url);
       }
-    } catch(e){ log('file change err: '+(e.message||e)); }
-  }, false);
+    };
+    xhr.onerror=function(){ setStatus('Errore network FormData, fallback raw'); sendRaw(url); };
+    xhr.ontimeout=function(){ setStatus('Timeout FormData, fallback raw'); sendRaw(url); };
 
-  // costruisce URL da prefisso + ultimo ottetto o da input completo
-  function buildTarget(){
-    var prefix = (ipPrefix.value || '').trim();
-    var last = (ipLast.value || '').toString().trim();
-    var ip = '';
-    if(prefix.indexOf('.') >= 0 && (last === '' || last.indexOf('.') >= 0)){
-      // se l'utente ha inserito un ip completo in prefix
-      ip = prefix;
-    } else {
-      ip = prefix + last;
-    }
-    // rimuovi eventuali spazi e aggiungi :porta se manca
-    ip = ip.replace(/\s+/g,'');
-    // allow user to write host:port in prefix or in ipLast optionally
-    if(ip.indexOf(':') === -1){
-      // default porta 8080 (puoi cambiare)
-      ip = ip + ':8080';
-    }
-    return ip;
+    var fd = new FormData();
+    fd.append('file', currentFile, currentFile.name);
+    xhr.send(fd);
+    setStatus('Upload in corso...');
   }
 
-  // invio: prima FormData (multipart), se fallisce fallback raw blob (application/octet-stream)
-  sendBtn.addEventListener('click', function(){
-    try {
-      if(!currentFile){ alert('Nessun file selezionato'); return; }
-      var target = buildTarget();
-      if(!target){ alert('Inserisci IP del server (prefisso + ultimo ottetto)'); return; }
-      var url = 'http://' + target;
-      setStatus('Tentativo invio a ' + url + ' (FormData)...');
-      log('Invio file "' + currentFile.name + '" a ' + url);
-
-      // 1) prova FormData first
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', url, true);
-        xhr.timeout = 60000; // 60s
-        xhr.onload = function(){
-          if(xhr.status >= 200 && xhr.status < 300){
-            setStatus('Upload completato (FormData). Server: ' + (xhr.responseText||xhr.status));
-            revokeObjectURL();
-          } else {
-            log('FormData upload: HTTP ' + xhr.status + '. Provo fallback raw...');
-            // fallback raw
-            sendRawBlob(url);
-          }
-        };
-        xhr.onerror = function(){
-          log('XHR FormData error (onerror). Provo fallback raw...');
-          sendRawBlob(url);
-        };
-        xhr.ontimeout = function(){ log('XHR FormData timeout. Provo fallback raw...'); sendRawBlob(url); };
-
-        var fd = new FormData();
-        // campo 'file' — lato Python deve leggere multipart field 'file'
-        fd.append('file', currentFile, currentFile.name);
-        xhr.send(fd);
-        setStatus('Upload (FormData) in corso...');
-        return;
-      } catch(eForm){ log('FormData attempt exception: '+(eForm.message||eForm)); /* try raw below */ }
-
-      // 2) fallback raw
-      sendRawBlob(url);
-
-    } catch(e){ log('sendBtn exception: '+(e.message||e)); setStatus('Errore invio'); }
-  }, false);
-
-  // funzione fallback: invia Blob raw (Content-Type: application/octet-stream) e header X-Filename
-  function sendRawBlob(url){
-    try {
-      if(!currentFile){ setStatus('Nessun file da inviare (raw)'); return; }
-      var xhr2 = new XMLHttpRequest();
-      xhr2.open('POST', url, true);
-      xhr2.timeout = 60000;
-      xhr2.setRequestHeader('Content-Type','application/octet-stream');
-      try { xhr2.setRequestHeader('X-Filename', encodeURIComponent(currentFile.name)); } catch(e){}
-      xhr2.onload = function(){
-        if(xhr2.status >= 200 && xhr2.status < 300){
-          setStatus('Upload completato (raw). Server: ' + (xhr2.responseText || xhr2.status));
-          revokeObjectURL();
-        } else {
-          setStatus('Upload raw fallito: HTTP ' + xhr2.status);
-          log('raw upload status ' + xhr2.status + ' resp: ' + (xhr2.responseText||''));
-        }
-      };
-      xhr2.onerror = function(){ setStatus('Errore network durante invio raw'); log('XHR raw onerror'); };
-      xhr2.ontimeout = function(){ setStatus('Timeout durante invio raw'); log('XHR raw timeout'); };
-      xhr2.send(currentFile);
-      setStatus('Upload (raw) in corso...');
-    } catch(e){ log('sendRawBlob exception: '+(e.message||e)); setStatus('Errore invio raw'); }
+  function sendRaw(url){
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.timeout=60000;
+    xhr.setRequestHeader('Content-Type','application/octet-stream');
+    xhr.setRequestHeader('X-Filename', encodeURIComponent(currentFile.name));
+    xhr.onload=function(){
+      if(xhr.status>=200 && xhr.status<300){
+        setStatus('Upload completato (raw)');
+        revokeObjectURL();
+      }else setStatus('Upload raw fallito: HTTP '+xhr.status);
+    };
+    xhr.onerror=function(){ setStatus('Errore network durante invio raw'); };
+    xhr.ontimeout=function(){ setStatus('Timeout durante invio raw'); };
+    xhr.send(currentFile);
+    setStatus('Upload raw in corso...');
   }
 
-  // clear
-  clearBtn.addEventListener('click', function(){ try{ fileInput.value=''; currentFile=null; revokeObjectURL(); preview.style.display='none'; sendBtn.disabled=true; setStatus('Pulito'); }catch(e){ } }, false);
-
-  // cleanup before unload
-  window.addEventListener('beforeunload', function(){ try{ revokeObjectURL(); }catch(e){} }, false);
-
-  // helpful default
-  setStatus('Pronto. Seleziona un file JPEG e inserisci l\'IP del server.');
+  sendBtn.addEventListener('click', sendFile);
+  clearBtn.addEventListener('click', function(){ fileInput.value=''; currentFile=null; revokeObjectURL(); preview.style.display='none'; sendBtn.disabled=true; setStatus('Pulito'); });
+  window.addEventListener('beforeunload', function(){ revokeObjectURL(); });
+  setStatus('Pronto. Seleziona file JPEG e imposta IP (192.168.x.x).');
 })();
 </script>
 </body>
