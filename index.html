@@ -3,573 +3,122 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ShareMiiShot — Puro ES5 (definitivo)</title>
+<title>ShareMiiShot — Wi-Fi Upload</title>
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;max-width:900px;margin:16px auto;padding:12px;color:#111;background:#fff}
-  header{display:block;margin-bottom:10px}
-  #banner{width:100%;max-height:140px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
-  h1{font-size:1.05rem;margin:8px 0}
-  .box{border:1px dashed #bbb;padding:12px;border-radius:8px;margin:12px 0;background:#fafafa}
-  .note{font-size:0.95rem;color:#333;margin:8px 0}
-  .muted{color:#666;font-size:0.9rem}
-  button{padding:10px 14px;font-size:1rem;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
-  button.secondary{background:#777;margin-left:8px}
-  button[disabled]{opacity:0.55;cursor:not-allowed}
-  #preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
-  #qrCanvas{margin-top:8px;border:1px solid #ddd;background:#fff}
-  textarea.dataout{width:100%;height:120px}
-  .hidden{display:none}
-  a.btnlink{display:inline-block;padding:8px 12px;background:#2d8a2d;color:#fff;border-radius:6px;text-decoration:none;margin-top:6px}
-  #logBox{border:1px solid #ccc;padding:8px;height:160px;overflow:auto;font-family:monospace;background:#f8f8f8;border-radius:6px;white-space:pre-wrap}
-  label.inline{display:inline-block;margin-right:10px}
-  .row{margin-top:10px}
+body{font-family:Arial,sans-serif;max-width:900px;margin:16px auto;padding:12px;color:#111;background:#fff}
+header{display:block;margin-bottom:10px}
+h1{font-size:1.05rem;margin:8px 0}
+.box{border:1px dashed #bbb;padding:12px;border-radius:8px;margin:12px 0;background:#fafafa}
+button{padding:10px 14px;font-size:1rem;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
+button[disabled]{opacity:0.55;cursor:not-allowed}
+#preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
+#logBox{border:1px solid #ccc;padding:8px;height:160px;overflow:auto;font-family:monospace;background:#f8f8f8;border-radius:6px;white-space:pre-wrap}
 </style>
 </head>
 <body>
+
 <header>
-  <img id="banner" src="sharemiishot.png" alt="sharemiishot banner" onerror="this.style.display='none'">
-  <h1>ShareMiiShot — compatibile Wii U (pura ES5)</h1>
+  <h1>ShareMiiShot — Wi-Fi Upload (Wii U)</h1>
 </header>
 
-<div id="mainBox" class="box">
-  <div id="intro" class="note">
-    ShareMiiShot ti permette di selezionare uno screenshot (HOME → pausa → Browser su Wii U) e generare un codice/QR per scaricarlo su un altro dispositivo.
-    <br><span class="muted">Funziona offline/local: le immagini vengono salvate in localStorage del browser (se supportato).</span>
+<div class="box">
+  <label>Seleziona immagine: <input id="fileInput" type="file" accept="image/jpeg,image/png" /></label>
+  <div style="margin-top:8px">
+    <button id="uploadBtn" disabled>Invia al server Wi-Fi</button>
   </div>
-
-  <div id="controls" class="row">
-    <label class="inline">Seleziona immagine: <input id="fileInput" type="file" accept="image/*" /></label>
-    <label class="inline">Qualità JPEG: <input id="quality" type="number" value="0.25" step="0.05" min="0.05" max="1" style="width:80px"/></label>
-    <label class="inline">Soglia QR (KB): <input id="thresholdKB" type="number" value="48" step="1" min="8" style="width:70px"/></label>
-    <div style="margin-top:8px">
-      <button id="grabSystemBtn">Prendi immagine dal sistema (Wii U)</button>
-      <button id="genBtn" disabled>Genera codice &amp; QR</button>
-      <button id="clearBtn" class="secondary">Pulisci</button>
-    </div>
-    <div id="status" class="note">Stato: pronto</div>
-  </div>
-</div>
-
-<div id="resultArea" class="box hidden">
-  <div class="note"><strong>Anteprima compressa (max 620px):</strong></div>
+  <div id="status" style="margin-top:8px">Stato: pronto</div>
   <img id="preview" alt="Anteprima immagine" class="hidden"/>
-  <div class="note"><strong>Codice univoco:</strong> <span id="codeText" style="font-family:monospace;font-weight:bold"></span></div>
-
-  <div id="qrBlock" class="note hidden">
-    <div><strong>QR del codice:</strong></div>
-    <canvas id="qrCanvas" width="180" height="180"></canvas>
-    <div class="muted">Il QR codifica il codice univoco. Se vuoi condividere l'immagine intera, copia il DataURL o usa il link di download.</div>
-  </div>
-
-  <div id="links" class="note"></div>
-
-  <div id="dataArea" class="note hidden">
-    <div>DataURL (backup — copia/incolla se necessario):</div>
-    <textarea id="dataOut" class="dataout" readonly></textarea>
-  </div>
 </div>
 
 <div class="box">
-  <div class="note"><strong>Ricezione:</strong> apri questa pagina su telefono/PC, inserisci il codice (o scansiona il QR). L'immagine sarà cercata in localStorage del browser (se è stato generato dal medesimo browser). Per trasferimenti tra dispositivi, usa la copia del DataURL o hosting esterno.</div>
-  <div class="row">
-    <label>Inserisci codice: <input id="recvCode" type="text" style="width:160px"/></label>
-    <button id="recvBtn">Mostra immagine</button>
-    <button id="consumeBtn" class="secondary">Mostra + Elimina (one-time)</button>
-    <div id="recvView" class="note hidden"><h3>Immagine ricevuta</h3><img id="recvImg" alt="Ricevuta" style="max-width:100%"></div>
-  </div>
-</div>
-
-<div class="box">
-  <div class="note"><strong>Log diagnostico (utile su Wii U):</strong></div>
+  <div><strong>Log diagnostico:</strong></div>
   <div id="logBox"></div>
 </div>
 
-<!-- Inline minified QR generator (qrcodejs-like small embed) - pure ES5 -->
 <script>
-/*
- Minimal QR generator used only for small text (code). The implementation below is a compact
- QR renderer adapted for producing small scannable patterns for short alphanumeric codes.
- It's not a full-blown library; it's a pragmatic, self-contained encoder for typical codes used here.
- Note: if a phone fails to scan the QR from Wii U screen, copy the code text manually.
-*/
-(function(){
-  // Very small wrapper exposing window._SM_QR.draw(canvas, text)
-  function makeQR(){
-    // We'll use a minimal approach: use "tiny-qr" style algorithm adapted.
-    // To keep the code short and pure ES5, we'll fallback to a simple pattern generator that is likely readable for short codes.
-    // This is a pragmatic compromise: generates a dense-but-regular dot pattern derived from the text.
-    function hashStr(s){
-      var h=0;
-      for(var i=0;i<s.length;i++){ h = ((h<<5)-h) + s.charCodeAt(i); h = h & h; }
-      return Math.abs(h);
-    }
-    function draw(canvas, text){
-      try {
-        if(!canvas || !canvas.getContext) return false;
-        var ctx = canvas.getContext('2d');
-        var size = Math.min(canvas.width, canvas.height);
-        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        // derive a pseudo-random but repeatable pattern from text
-        var h = hashStr(text);
-        var cols = 21; // typical QR small version
-        var cell = Math.floor(size/cols);
-        var pad = Math.floor((size - cell*cols)/2);
-        // seed array
-        var seed = [];
-        for(var i=0;i<cols*cols;i++){ seed.push(((h + i*37) % 2) === 0); }
-        // mix with chars
-        for(var k=0;k<text.length;k++){
-          var ch = text.charCodeAt(k);
-          for(var j=0;j<cols*cols;j++){
-            if((j + ch) % (k+3) === 0) seed[j] = !seed[j];
-          }
-        }
-        ctx.fillStyle = '#000';
-        for(var r=0;r<cols;r++){
-          for(var c=0;c<cols;c++){
-            if(seed[r*cols + c]){
-              var x = pad + c*cell;
-              var y = pad + r*cell;
-              ctx.fillRect(x+1, y+1, cell-2, cell-2);
-            }
-          }
-        }
-        // draw small text under QR for convenience
-        ctx.fillStyle = '#000';
-        ctx.font = Math.max(10, Math.floor(size/cols*0.9)) + 'px Arial';
-        ctx.fillText(text, 6, canvas.height - 6);
-        return true;
-      } catch(e){ return false; }
-    }
-    return { draw: draw };
-  }
-  window._SM_QR = makeQR();
-})();
-</script>
-
-<script>
-/* ShareMiiShot definitivo - puro ES5 */
-
-// helper: DOM shortcuts
+// Helpers
 function get(id){ return document.getElementById(id); }
-function log(msg){ try { var now = new Date(); var hh = now.getHours(), mm = now.getMinutes(), ss = now.getSeconds();
-  if(mm<10) mm='0'+mm; if(ss<10) ss='0'+ss;
-  var out = '['+hh+':'+mm+':'+ss+'] ' + msg + '\n'; var lb = get('logBox'); lb.textContent += out; lb.scrollTop = lb.scrollHeight; } catch(e){}}
+function log(msg){ try { var lb = get('logBox'); lb.textContent += '['+(new Date()).toLocaleTimeString()+'] '+msg+'\n'; lb.scrollTop = lb.scrollHeight; } catch(e){} }
+function setStatus(text){ try { get('status').innerText = 'Stato: ' + text; } catch(e){} log(text); }
+function show(elem){ elem.style.display='block'; }
+function hide(elem){ elem.style.display='none'; }
 
-function setStatus(text){ try { get('status').innerHTML = 'Stato: ' + text; } catch(e){} log(text); }
-
-// configuration
-var MAX_DIM = 620;
-var DEFAULT_QUALITY = 0.25;
-var CODE_LEN = 6;
-
-// state
-var currentDataURL = null;
-var currentCode = null;
-var currentBlobURL = null;
-
-// detect Wii U UA
-var ua = navigator.userAgent || '';
-var isWiiU = /Nintendo WiiU/i.test(ua) || /WiiU/i.test(ua);
-
-// UI elements
-var fileInput = get('fileInput');
-var grabSystemBtn = get('grabSystemBtn');
-var genBtn = get('genBtn');
-var clearBtn = get('clearBtn');
+// State
+var currentFile = null;
 var preview = get('preview');
-var resultArea = get('resultArea');
-var codeText = get('codeText');
-var qrCanvas = get('qrCanvas');
-var qrBlock = get('qrBlock');
-var links = get('links');
-var dataArea = get('dataArea');
-var dataOut = get('dataOut');
-var thresholdInput = get('thresholdKB');
-var qualityInput = get('quality');
+var uploadBtn = get('uploadBtn');
+var fileInput = get('fileInput');
 
-var recvCode = get('recvCode');
-var recvBtn = get('recvBtn');
-var consumeBtn = get('consumeBtn');
-var recvView = get('recvView');
-var recvImg = get('recvImg');
+// Config
+var SERVER_IP = '192.168.x.x'; // Cambia con IP del PC che esegue il server Python
+var SERVER_PORT = 8080;
 
-// initial UI adapt
-(function(){
+// File selection
+fileInput.addEventListener('change', function(){
+  var f = fileInput.files && fileInput.files[0];
+  if(!f){ setStatus('Nessun file selezionato'); uploadBtn.disabled = true; return; }
+  currentFile = f;
+  setStatus('File selezionato: ' + f.name + ' ('+Math.round(f.size/1024)+' KB)');
+  // Anteprima
   try {
-    if(isWiiU){
-      // Wii U: remind user about HOME flow
-      setStatus('Rilevato Wii U (UA: '+ (ua||'unknown') + '). Usa HOME → pausa → Browser per selezionare screenshot.');
-    } else {
-      setStatus('Browser non Wii U rilevato. Puoi testare tutte le funzioni caricando file dal tuo dispositivo.');
-    }
-  } catch(e){}
-})();
-
-// utilities
-function genCode(len){
-  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  var s = '';
-  for(var i=0;i<len;i++){ s += chars.charAt(Math.floor(Math.random() * chars.length)); }
-  // add timestamp small suffix for uniqueness
-  var ts = Math.floor((new Date()).getTime() / 1000) % 10000;
-  return s + '-' + ts;
-}
-function show(elem){ if(elem.className.indexOf('hidden') !== -1) elem.className = elem.className.replace('hidden','').trim(); }
-function hide(elem){ if(elem.className.indexOf('hidden') === -1) elem.className += ' hidden'; }
-function revokeCurrentBlob(){ try { if(currentBlobURL){ if(window.URL && URL.revokeObjectURL) URL.revokeObjectURL(currentBlobURL); currentBlobURL = null; } } catch(e){ log('revoke error: '+(e.message||e)); } }
-
-// image processing (resize + compress) via canvas
-function compressImageFromSrc(src, desiredQuality, cb){
-  try {
-    var img = new Image();
-    img.onload = function(){
-      try {
-        var w = img.naturalWidth || img.width;
-        var h = img.naturalHeight || img.height;
-        if(!w || !h){ cb(new Error('Immagine senza dimensione')); return; }
-        var targetW = w, targetH = h;
-        if(w > h && w > MAX_DIM){ targetW = MAX_DIM; targetH = Math.round(h * MAX_DIM / w); }
-        else if(h >= w && h > MAX_DIM){ targetH = MAX_DIM; targetW = Math.round(w * MAX_DIM / h); }
-        else if(w > MAX_DIM){ targetW = MAX_DIM; targetH = Math.round(h * MAX_DIM / w); }
-        // canvas
-        var c = document.createElement('canvas');
-        c.width = targetW;
-        c.height = targetH;
-        var ctx = c.getContext('2d');
-        ctx.clearRect(0,0,targetW,targetH);
-        ctx.drawImage(img, 0, 0, targetW, targetH);
-        var q = parseFloat(desiredQuality);
-        if(isNaN(q) || q < 0.05) q = DEFAULT_QUALITY;
-        if(q > 1) q = 1;
-        var out = null;
-        try { out = c.toDataURL('image/jpeg', q); } catch(e){
-          try { out = c.toDataURL('image/png'); } catch(e2){ out = null; }
-        }
-        if(!out){ cb(new Error('Conversione canvas->dataURL fallita')); return; }
-        cb(null, out);
-      } catch(ex){ cb(ex); }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      preview.src = e.target.result;
+      show(preview);
+      uploadBtn.disabled = false;
     };
-    img.onerror = function(){ cb(new Error('Impossibile caricare immagine (img.onerror)')); };
-    try { img.crossOrigin = 'anonymous'; } catch(e){}
-    img.src = src;
-  } catch(err){ cb(err); }
-}
+    reader.onerror = function(){ setStatus('Errore lettura file'); };
+    reader.readAsDataURL(f);
+  } catch(e){ setStatus('Errore FileReader: '+(e.message||e)); }
+});
 
-// robust file handling: prefer createObjectURL, fallback FileReader
-function handleFile(file){
-  revokeCurrentBlob();
-  currentDataURL = null;
-  currentCode = null;
-  dataOut.value = '';
-  links.innerHTML = '';
-  hide(resultArea);
-  hide(qrBlock);
-  if(!file){ setStatus('Nessun file selezionato'); genBtn.disabled = true; return; }
-  setStatus('File selezionato: ' + (file.name || '') + ' — ' + Math.round((file.size||0)/1024) + ' KB');
-  genBtn.disabled = true;
+// Upload function
+uploadBtn.addEventListener('click', function(){
+  if(!currentFile){ setStatus('Nessun file da inviare'); return; }
 
-  // Try createObjectURL first
   try {
-    if(window.URL && URL.createObjectURL){
-      try {
-        var blobUrl = URL.createObjectURL(file);
-        currentBlobURL = blobUrl;
-        // compress from blob url
-        compressImageFromSrc(blobUrl, qualityInput.value, function(err, outData){
-          if(err){
-            log('compress from blobUrl failed: ' + (err.message||err));
-            // try FileReader next
-            tryFileReaderFallback(file);
-            revokeCurrentBlob();
-          } else {
-            currentDataURL = outData;
-            preview.src = outData;
-            show(preview);
-            show(resultArea);
-            setStatus('Anteprima pronta (createObjectURL). Premi "Genera codice & QR".');
-            genBtn.disabled = false;
-            revokeCurrentBlob(); // we keep dataURL, safe to revoke
-          }
-        });
-        return;
-      } catch(e){
-        log('createObjectURL attempt error: ' + (e.message||e));
-        // fall back
+    var xhr = new XMLHttpRequest();
+    var url = 'http://' + SERVER_IP + ':' + SERVER_PORT + '/';
+    xhr.open('POST', url, true);
+
+    var boundary = '----WebKitFormBoundary' + Math.random().toString(36).substr(2);
+    xhr.setRequestHeader('Content-Type', 'multipart/form-data; boundary=' + boundary);
+
+    xhr.onload = function(){
+      if(xhr.status === 200){
+        setStatus('Upload completato con successo!');
+        log('Server risponde: ' + xhr.responseText);
+      } else {
+        setStatus('Upload fallito: ' + xhr.status);
+        log('Errore server: ' + xhr.responseText);
       }
-    }
-  } catch(e){ log('createObjectURL outer error: ' + (e.message||e)); }
-
-  // fallback FileReader
-  tryFileReaderFallback(file);
-}
-
-function tryFileReaderFallback(file){
-  if(!window.FileReader){ setStatus('FileReader non disponibile in questo browser'); log('no FileReader'); genBtn.disabled = true; return; }
-  try {
-    var fr = new FileReader();
-    fr.onerror = function(){ setStatus('FileReader error'); log('FileReader error'); genBtn.disabled = true; };
-    fr.onload = function(ev){
-      try {
-        var dataURL = ev.target.result;
-        compressImageFromSrc(dataURL, qualityInput.value, function(err, outData){
-          if(err){
-            log('compress from FileReader failed: ' + (err.message||err));
-            // last resort: keep original dataURL if available
-            currentDataURL = dataURL;
-            preview.src = dataURL;
-            show(preview);
-            show(resultArea);
-            setStatus('Anteprima pronta (raw data). Premi "Genera codice & QR".');
-            genBtn.disabled = false;
-          } else {
-            currentDataURL = outData;
-            preview.src = outData;
-            show(preview);
-            show(resultArea);
-            setStatus('Anteprima pronta (FileReader). Premi "Genera codice & QR".');
-            genBtn.disabled = false;
-          }
-        });
-      } catch(e){ setStatus('Errore FileReader processing'); log('FileReader processing error: ' + (e.message||e)); genBtn.disabled = true; }
     };
-    fr.readAsDataURL(file);
-  } catch(e){ setStatus('FileReader non utilizzabile: ' + (e.message||e)); log('FileReader outer error: ' + (e.message||e)); genBtn.disabled = true; }
-}
+    xhr.onerror = function(){ setStatus('Errore invio HTTP'); log('XHR error'); };
 
-// event handlers & polling fallback
-(function(){
-  var lastVal = '';
-  if(fileInput){
-    fileInput.addEventListener('change', function(){
-      try {
-        var f = null;
-        if(fileInput.files && fileInput.files.length > 0) f = fileInput.files[0];
-        if(f) handleFile(f);
-        else {
-          var val = fileInput.value || '';
-          setStatus('File selezionato (path): ' + val + ' — alcuni browser non permettono accesso programmatico.');
-          log('change but files[] empty; value=' + val);
-          // let user try generate (may fail)
-          genBtn.disabled = false;
-        }
-      } catch(e){ log('fileInput change handler err: ' + (e.message||e)); }
-    }, false);
+    // costruisci multipart body
+    var body = '--'+boundary+'\r\n';
+    body += 'Content-Disposition: form-data; name="file"; filename="'+currentFile.name+'"\r\n';
+    body += 'Content-Type: '+currentFile.type+'\r\n\r\n';
 
-    // polling fallback for very old UAs
-    setInterval(function(){
-      try {
-        var cur = fileInput.value || '';
-        if(cur && cur !== lastVal){
-          lastVal = cur;
-          log('Polling detected file input change: ' + cur);
-          if(fileInput.files && fileInput.files.length > 0){
-            handleFile(fileInput.files[0]);
-          } else {
-            setStatus('File selezionato (path): ' + cur + ' — prova a premere "Genera" per verificare.');
-            genBtn.disabled = false;
-          }
-        }
-      } catch(e){}
-    }, 800);
-  }
-})();
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var binary = e.target.result;
+      // Convert base64 string to binary string
+      var raw = atob(binary.split(',')[1]);
+      body += raw;
+      body += '\r\n--'+boundary+'--\r\n';
 
-// "Prendi immagine dal sistema" (poll DOM for images injected by Wii U)
-grabSystemBtn.addEventListener('click', function(){
-  try {
-    setStatus('Ricerca immagine nel DOM del browser (modalità sistema)...');
-    log('User requested system grab');
-    // poll several seconds searching for candidate images (as discussed)
-    var attempts = 0;
-    var maxAttempts = 30; // ~30 * 700ms = 21s
-    var poll = setInterval(function(){
-      attempts++;
-      try {
-        var found = findCandidateInDOM();
-        if(found){
-          clearInterval(poll);
-          compressImageFromSrc(found, qualityInput.value, function(err, out){
-            if(err){ setStatus('Errore processing immagine dal sistema: ' + (err.message||err)); log('system compress err: ' + (err.message||err)); return; }
-            currentDataURL = out;
-            preview.src = out;
-            show(preview);
-            show(resultArea);
-            setStatus('Immagine di sistema trovata e processata. Premi "Genera codice & QR".');
-            genBtn.disabled = false;
-          });
-          return;
-        }
-        if(attempts >= maxAttempts){
-          clearInterval(poll);
-          setStatus('Timeout ricerca immagine sistema (non trovata). Prova la procedura HOME → Browser e riprova.');
-          log('system grab timeout after ' + attempts + ' attempts');
-        } else {
-          setStatus('Ricerca immagine sistema... (' + attempts + '/' + maxAttempts + ')');
-        }
-      } catch(e){ clearInterval(poll); setStatus('Errore durante ricerca sistema'); log('system grab exception: ' + (e.message||e)); }
-    }, 700);
-  } catch(e){ log('grabSystemBtn error: ' + (e.message||e)); }
-}, false);
+      // Send as ArrayBuffer
+      var buf = new Uint8Array(body.length);
+      for(var i=0;i<body.length;i++){ buf[i]=body.charCodeAt(i); }
+      xhr.send(buf.buffer);
+      setStatus('Upload in corso...');
+    };
+    reader.readAsDataURL(currentFile);
 
-// find candidate in DOM (images / object / embed / background)
-function findCandidateInDOM(){
-  try {
-    var imgs = document.getElementsByTagName('img');
-    if(imgs){
-      for(var i=0;i<imgs.length;i++){
-        var im = imgs[i];
-        if(im.id === 'banner') continue;
-        var w = im.naturalWidth || im.width || 0;
-        var h = im.naturalHeight || im.height || 0;
-        if(w > 16 || h > 16){
-          var src = im.src || '';
-          if(src && src.indexOf('data:') === 0) return src;
-          if(src && src.indexOf('blob:') === 0) return src;
-          // prefer ones with typical keywords
-          var low = src.toLowerCase();
-          if(low.indexOf('screenshot') !== -1 || low.indexOf('screen') !== -1 || low.indexOf('share') !== -1) return src;
-        }
-      }
-      // fallback: first non tiny image
-      for(var j=0;j<imgs.length;j++){
-        var im2 = imgs[j];
-        if(im2.id === 'banner') continue;
-        var w2 = im2.naturalWidth || im2.width || 0;
-        var h2 = im2.naturalHeight || im2.height || 0;
-        if(w2 > 16 || h2 > 16) return im2.src;
-      }
-    }
-    // object/embed/video poster/background image checks
-    var objs = document.getElementsByTagName('object');
-    for(var k=0;k<objs.length;k++){
-      var o = objs[k];
-      if(o.data) return o.data;
-    }
-    var embs = document.getElementsByTagName('embed');
-    for(var m=0;m<embs.length;m++){
-      var e = embs[m];
-      if(e.src) return e.src;
-    }
-    var vids = document.getElementsByTagName('video');
-    for(var v=0; v<vids.length; v++){
-      var vid = vids[v];
-      if(vid.poster) return vid.poster;
-    }
-    // background-image style
-    var all = document.getElementsByTagName('*');
-    for(var a=0;a<all.length;a++){
-      try {
-        var st = window.getComputedStyle ? window.getComputedStyle(all[a],null).backgroundImage : all[a].style.backgroundImage;
-        if(st && st.indexOf('url(') !== -1){
-          var m = st.match(/url\(["']?([^"')]+)["']?\)/);
-          if(m && m[1]){
-            var url = m[1];
-            if(url.indexOf('sharemiishot.png') !== -1) continue;
-            return url;
-          }
-        }
-      } catch(e){}
-    }
-    return null;
-  } catch(err){ log('findCandidateInDOM error: ' + (err.message||err)); return null; }
-}
-
-// generate
-genBtn.addEventListener('click', function(){
-  try {
-    if(!currentDataURL){ setStatus('Nessuna immagine pronta. Seleziona o prendi immagine dal sistema.'); log('gen pressed but no data'); return; }
-    currentCode = genCode(CODE_LEN);
-    codeText.innerText = currentCode;
-    // save in localStorage
-    try {
-      localStorage.setItem('smi_' + currentCode, currentDataURL);
-      localStorage.setItem('smi_' + currentCode + '_ts', '' + (new Date()).getTime());
-      log('Saved mapping smi_' + currentCode);
-    } catch(e){ log('localStorage save failed: ' + (e.message || e)); }
-    // download/open link
-    links.innerHTML = '';
-    var a = document.createElement('a'); a.href = currentDataURL; a.className = 'btnlink'; a.appendChild(document.createTextNode('Apri / Scarica immagine')); a.setAttribute('download', 'sharemiishot.jpg');
-    links.appendChild(a);
-    // dataURL backup
-    dataOut.value = currentDataURL;
-    show(dataArea);
-    // draw QR for code
-    try {
-      var ok = false;
-      if(window._SM_QR && typeof window._SM_QR.draw === 'function'){
-        ok = window._SM_QR.draw(qrCanvas, currentCode);
-      }
-      if(ok) show(qrBlock); else hide(qrBlock);
-    } catch(e){ log('QR draw error: ' + (e.message||e)); hide(qrBlock); }
-    setStatus('Codice generato: ' + currentCode + '. Condividi il codice o scannerizza il QR.');
-    show(resultArea);
-    // optionally cleanup heavy memory
-    try { revokeCurrentBlob(); } catch(e){}
-  } catch(e){ log('genBtn error: ' + (e.message || e)); setStatus('Errore generazione codice'); }
-}, false);
-
-// receive handlers
-recvBtn.addEventListener('click', function(){
-  try {
-    var code = (recvCode.value || '').replace(/[^A-Z0-9\-]/ig,'').trim();
-    if(!code){ alert('Inserisci un codice valido'); return; }
-    var key = 'smi_' + code;
-    var data = null;
-    try { data = localStorage.getItem(key); } catch(e){ data = null; log('localStorage get error'); }
-    if(data){
-      recvImg.src = data;
-      show(recvView);
-      setStatus('Immagine trovata localmente per codice ' + code);
-    } else {
-      alert('Immagine non trovata in questo browser. Se il codice è stato generato su un altro dispositivo, copia il DataURL o scaricalo da quel dispositivo.');
-      setStatus('Immagine non trovata per codice ' + code);
-    }
-  } catch(e){ log('recvBtn error: ' + (e.message||e)); }
-}, false);
-
-// consume (one-time)
-consumeBtn.addEventListener('click', function(){
-  try {
-    var code = (recvCode.value || '').replace(/[^A-Z0-9\-]/ig,'').trim();
-    if(!code){ alert('Inserisci un codice valido'); return; }
-    var key = 'smi_' + code;
-    var data = null;
-    try { data = localStorage.getItem(key); } catch(e){ data = null; }
-    if(data){
-      recvImg.src = data;
-      show(recvView);
-      try { localStorage.removeItem(key); localStorage.removeItem(key + '_ts'); } catch(e){}
-      setStatus('Immagine mostrata e rimossa da localStorage (one-time).');
-      log('Consumed and deleted smi_' + code);
-    } else {
-      alert('Immagine non trovata o già consumata.');
-      setStatus('Nessuna immagine da consumare per ' + code);
-    }
-  } catch(e){ log('consumeBtn error: ' + (e.message||e)); }
-}, false);
-
-// clear
-clearBtn.addEventListener('click', function(){
-  try {
-    revokeCurrentBlob();
-    currentDataURL = null;
-    currentCode = null;
-    preview.src = '';
-    dataOut.value = '';
-    links.innerHTML = '';
-    codeText.innerText = '';
-    hide(resultArea);
-    hide(qrBlock);
-    genBtn.disabled = true;
-    setStatus('Pulito.');
-    log('State cleared by user');
-  } catch(e){ log('clearBtn error: ' + (e.message||e)); }
-}, false);
-
-// initial
-(function(){ log('ShareMiiShot ready. UA: ' + (navigator.userAgent || 'unknown')); setStatus('Pronto. Seleziona o prendi immagine dal sistema.'); })();
-
+  } catch(e){ setStatus('Errore upload: '+(e.message||e)); log('Upload exception: '+(e.message||e)); }
+});
 </script>
+
 </body>
 </html>
