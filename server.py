@@ -1,17 +1,14 @@
 import http.server
 import socketserver
 import socket
-import threading
 import os
+import time
+from urllib.parse import parse_qs
 
 PORT = 8080
-RECEIVE_TIMEOUT = 300  # 5 minuti
-UPLOAD_DIR = "ShareMiiShot_Received"
+RECEIVE_DIR = "ShareMiiShot_Received"
+os.makedirs(RECEIVE_DIR, exist_ok=True)
 
-# crea cartella upload se non esiste
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-# trova IP locale
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -23,23 +20,38 @@ def get_local_ip():
         s.close()
     return ip
 
-# abilita CGI
-Handler = http.server.CGIHTTPRequestHandler
-Handler.cgi_directories = ["/cgi-bin"]
+class ImageHandler(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        content_length = int(self.headers.get('Content-Length', 0))
+        data = self.rfile.read(content_length)
+        filename = f"image_{int(time.time())}.jpg"
+        filepath = os.path.join(RECEIVE_DIR, filename)
+        try:
+            with open(filepath, 'wb') as f:
+                f.write(data)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'OK: file ricevuto')
+            print(f"IMMAGINE RICEVUTA: {filename}")
+        except Exception as e:
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(b'Errore durante ricezione')
+            print("Errore ricezione:", e)
 
-httpd = socketserver.TCPServer(("", PORT), Handler)
-local_ip = get_local_ip()
-print(f"Server pronto! Apri nel browser Wii U: http://{local_ip}:{PORT}/index.html")
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Server ShareMiiShot pronto per ricevere immagini via POST.")
 
-# thread per timeout
-def stop_server():
-    threading.Timer(RECEIVE_TIMEOUT, lambda: httpd.shutdown()).start()
+    def log_message(self, format, *args):
+        return  # disabilita log HTTP standard
 
-stop_server()
-
-try:
-    httpd.serve_forever()
-except KeyboardInterrupt:
-    print("\nServer chiuso manualmente.")
-finally:
-    httpd.server_close()
+if __name__ == "__main__":
+    ip = get_local_ip()
+    with socketserver.TCPServer(("", PORT), ImageHandler) as httpd:
+        print(f"Server pronto! Invia le immagini a http://{ip}:{PORT}/")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nChiusura server.")
