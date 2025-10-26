@@ -23,15 +23,15 @@ button { padding: 10px 14px; font-size: 1rem; border-radius: 6px; border:0; back
 </header>
 
 <div class="box">
-<p>Seleziona l’immagine della Wii U e inviala direttamente al server Python.</p>
+<p>Select your Wii U/3DS image and upload it directly to the Python server.</p>
 
-<label>Ultime due cifre IP (192.168.): <input type="text" id="ipEnd" value="1.100"/></label>
-<label>Seleziona file: <input type="file" id="fileInput" accept="image/jpeg"/></label>
-<button id="sendBtn">Invia immagine</button>
+<label>Latest IP digits (192.168.x.x): <input type="text" id="ipEnd" value="x.x"/></label>
+<label>Select file: <input type="file" id="fileInput" accept="image/jpeg"/></label>
+<button id="sendBtn">Send image</button>
 
-<div id="status">Stato: pronto</div>
+<div id="status">Status: Ready</div>
 </div>
-
+<footer>Made with ❤️ by Anto</footer>
 <script>
 document.getElementById('sendBtn').addEventListener('click', function(){
     var ipEnd = document.getElementById('ipEnd').value.trim();
@@ -43,16 +43,16 @@ document.getElementById('sendBtn').addEventListener('click', function(){
     xhr.open("POST", "http://" + ip + ":" + port + "/", true);
     xhr.onload = function() {
         if(xhr.status == 200) {
-            document.getElementById('status').innerText = "Invio completato!";
+            document.getElementById('status').innerText = "Submission completed!";
         } else {
-            alert("Errore network durante invio");
+            alert("Submission completed!");
         }
     };
     xhr.onerror = function(){
-        alert("Errore network durante invio");
+        alert("Network error while sending ;-(");
     };
     xhr.send(file);
-    document.getElementById('status').innerText = "Invio in corso...";
+    document.getElementById('status').innerText = "Sending...";
 });
 </script>
 
