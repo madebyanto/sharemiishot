@@ -31,18 +31,18 @@ class ImageHandler(http.server.BaseHTTPRequestHandler):
                 f.write(data)
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(b'OK: file ricevuto')
-            print(f"IMMAGINE RICEVUTA: {filename}")
+            self.wfile.write(b'OK: file ricevuta')
+            print(f"IMAGE RECEIVED: {filename}")
         except Exception as e:
             self.send_response(500)
             self.end_headers()
-            self.wfile.write(b'Errore durante ricezione')
-            print("Errore ricezione:", e)
+            self.wfile.write(b'Error during reception')
+            print("Receiving Error:", e)
 
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Server ShareMiiShot pronto per ricevere immagini via POST.")
+        self.wfile.write(b"ShareMiiShot server ready to receive images via POST.")
 
     def log_message(self, format, *args):
         return  # disabilita log HTTP standard
@@ -50,8 +50,8 @@ class ImageHandler(http.server.BaseHTTPRequestHandler):
 if __name__ == "__main__":
     ip = get_local_ip()
     with socketserver.TCPServer(("", PORT), ImageHandler) as httpd:
-        print(f"Server pronto! Invia le immagini a http://{ip}:{PORT}/")
+        print(f"Server ready! Send images to http://{ip}:{PORT}/")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
-            print("\nChiusura server.")
+            print("\nServer shutdown.")
