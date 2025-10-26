@@ -24,3 +24,9 @@ It’s super simple!
 - Transfer speed depends on your connection, but the service works well even on slower connections (1 Mbps is enough).  
 - The **Wii U/3DS browser** is a bit outdated, so minor issues may occur after web app updates.  
 - If the file is received successfully but the browser shows **"Network error"**, you can safely ignore it: the file is still intact.
+
+---
+
+# Credits
+
+ShareMiiShot is a web app developed solely by me (Anto) in HTML/CSS (for the web interface), Python (for FTP), and JavaScript (for the flow and logic). Creating this web app was incredibly complicated as I had to use "ancient" JS logic, so you should know that I put a lot of effort and care into it. If you'd like to donate to support my work, here's the Ko-Fi: https://ko-fi.com/madebyanto
