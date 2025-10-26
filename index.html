@@ -25,55 +25,51 @@
 <div class="box">
   <p>Seleziona l’immagine della Wii U e inviala direttamente al server Python.</p>
 
-  <form id="uploadForm" method="POST" enctype="multipart/form-data" target="dummyFrame">
-    <label>IP locale (default 192.168.xx.xx): <input type="text" id="serverIp" value="192.168.1.100" /></label>
-    <label>Porta (default 8080): <input type="text" id="serverPort" value="8080" /></label>
-    <label>Seleziona file: <input type="file" name="file" id="fileInput" accept="image/jpeg"/></label>
-    <button type="submit">Invia immagine</button>
-  </form>
-
-  <iframe name="dummyFrame" style="display:none;"></iframe>
+  <label>IP locale (default 192.168.xx.xx): <input type="text" id="serverIp" value="192.168.1.100" /></label>
+  <label>Porta (default 8080): <input type="text" id="serverPort" value="8080" /></label>
+  <label>Seleziona file: <input type="file" id="fileInput" accept="image/jpeg"/></label>
+  <button id="sendBtn">Invia immagine</button>
 
   <div id="status">Stato: pronto</div>
 </div>
 
 <script>
 (function(){
-  var form = document.getElementById('uploadForm');
   var status = document.getElementById('status');
   var fileInput = document.getElementById('fileInput');
   var ipInput = document.getElementById('serverIp');
   var portInput = document.getElementById('serverPort');
+  var btn = document.getElementById('sendBtn');
 
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
+  btn.addEventListener('click', function(){
     var file = fileInput.files[0];
     if(!file){ alert("Seleziona un file"); return; }
     var ip = ipInput.value.trim();
     var port = portInput.value.trim() || "8080";
     if(!ip){ alert("Inserisci IP valido"); return; }
 
-    // crea form dinamico per invio
-    var f = document.createElement('form');
-    f.method = "POST";
-    f.enctype = "multipart/form-data";
-    f.action = "http://" + ip + ":" + port + "/";
-    f.target = "dummyFrame";
-
-    var fi = document.createElement('input');
-    fi.type = "file";
-    fi.name = "file";
-    fi.files = fileInput.files; // ATTENZIONE: alcuni browser Wii U non supportano questa assegnazione. fallback nativo.
-    f.appendChild(fi);
-
-    document.body.appendChild(f);
     status.innerText = "Invio in corso...";
-    f.submit();
-    document.body.removeChild(f);
 
-    setTimeout(function(){
-      status.innerText = "Stato: invio completato (verifica sul server)";
-    }, 2000);
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "http://" + ip + ":" + port + "/", true);
+    xhr.setRequestHeader("X-Filename", file.name);
+
+    xhr.onload = function() {
+      if(xhr.status === 200){
+        status.innerText = "Invio completato! Verifica sul server.";
+        alert("Invio completato: " + xhr.responseText);
+      } else {
+        status.innerText = "Errore durante l'invio.";
+        alert("Errore: " + xhr.responseText);
+      }
+    };
+
+    xhr.onerror = function() {
+      status.innerText = "Errore network durante invio";
+      alert("Errore network durante invio");
+    };
+
+    xhr.send(file);
   });
 })();
 </script>
