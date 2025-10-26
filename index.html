@@ -3,122 +3,270 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ShareMiiShot — Wi-Fi Upload</title>
+<title>ShareMiiShot — Wi-Fi Upload (no FileReader upload)</title>
 <style>
-body{font-family:Arial,sans-serif;max-width:900px;margin:16px auto;padding:12px;color:#111;background:#fff}
-header{display:block;margin-bottom:10px}
-h1{font-size:1.05rem;margin:8px 0}
-.box{border:1px dashed #bbb;padding:12px;border-radius:8px;margin:12px 0;background:#fafafa}
-button{padding:10px 14px;font-size:1rem;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
-button[disabled]{opacity:0.55;cursor:not-allowed}
-#preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
-#logBox{border:1px solid #ccc;padding:8px;height:160px;overflow:auto;font-family:monospace;background:#f8f8f8;border-radius:6px;white-space:pre-wrap}
+  body{font-family:Arial,Helvetica,sans-serif;max-width:900px;margin:16px auto;padding:12px;color:#111;background:#fff}
+  h1{font-size:1.05rem;margin:8px 0}
+  .box{border:1px dashed #bbb;padding:12px;border-radius:8px;margin:12px 0;background:#fafafa}
+  button{padding:10px 14px;font-size:1rem;border-radius:6px;border:0;background:#0b84ff;color:#fff;cursor:pointer}
+  button[disabled]{opacity:0.55;cursor:not-allowed}
+  #preview{display:block;margin-top:8px;max-width:100%;border:1px solid #ccc;padding:4px;border-radius:4px}
+  #logBox{border:1px solid #ccc;padding:8px;height:160px;overflow:auto;font-family:monospace;background:#f8f8f8;border-radius:6px;white-space:pre-wrap}
+  .muted{color:#666;font-size:0.9rem}
+  label.inline{display:inline-block;margin-right:10px}
 </style>
 </head>
 <body>
+  <h1>ShareMiiShot — Wi-Fi Upload (Wii U friendly)</h1>
 
-<header>
-  <h1>ShareMiiShot — Wi-Fi Upload (Wii U)</h1>
-</header>
+  <div class="box">
+    <div class="muted">Procedura: avvia lo script server su PC (vedi README Python), imposta l'IP qui sotto, poi sulla Wii U seleziona lo screenshot e premi "Invia al server".</div>
 
-<div class="box">
-  <label>Seleziona immagine: <input id="fileInput" type="file" accept="image/jpeg,image/png" /></label>
-  <div style="margin-top:8px">
-    <button id="uploadBtn" disabled>Invia al server Wi-Fi</button>
+    <div style="margin-top:8px">
+      <label class="inline">Server IP: <input id="serverIp" type="text" value="192.168.x.x" style="width:160px"></label>
+      <label class="inline">Porta: <input id="serverPort" type="number" value="8080" style="width:80px"></label>
+    </div>
+
+    <div style="margin-top:10px">
+      <label>Seleziona immagine: <input id="fileInput" type="file" accept="image/jpeg,image/png" /></label>
+    </div>
+
+    <div style="margin-top:8px">
+      <button id="uploadBtn" disabled>Invia al server Wi-Fi</button>
+      <button id="previewOnlyBtn" style="margin-left:8px;">Mostra solo anteprima</button>
+      <button id="clearBtn" style="margin-left:8px;background:#777">Pulisci</button>
+    </div>
+
+    <div id="status" style="margin-top:8px">Stato: pronto</div>
+    <img id="preview" alt="Anteprima immagine" style="display:none">
   </div>
-  <div id="status" style="margin-top:8px">Stato: pronto</div>
-  <img id="preview" alt="Anteprima immagine" class="hidden"/>
-</div>
 
-<div class="box">
-  <div><strong>Log diagnostico:</strong></div>
-  <div id="logBox"></div>
-</div>
+  <div class="box">
+    <div><strong>Log diagnostico:</strong></div>
+    <div id="logBox"></div>
+  </div>
 
 <script>
-// Helpers
-function get(id){ return document.getElementById(id); }
-function log(msg){ try { var lb = get('logBox'); lb.textContent += '['+(new Date()).toLocaleTimeString()+'] '+msg+'\n'; lb.scrollTop = lb.scrollHeight; } catch(e){} }
-function setStatus(text){ try { get('status').innerText = 'Stato: ' + text; } catch(e){} log(text); }
-function show(elem){ elem.style.display='block'; }
-function hide(elem){ elem.style.display='none'; }
+/* ShareMiiShot Wi-Fi client (puro ES5)
+   - usa URL.createObjectURL per preview
+   - usa FormData per upload (Nessun FileReader per invio)
+   - revoca objectURL dopo uso
+   - fallback: FileReader solo per preview se createObjectURL mancante
+*/
 
-// State
-var currentFile = null;
-var preview = get('preview');
-var uploadBtn = get('uploadBtn');
-var fileInput = get('fileInput');
+(function(){
+  // ---- helper DOM ----
+  function get(id){ return document.getElementById(id); }
+  function log(msg){
+    try {
+      var now = new Date();
+      var hh = now.getHours(), mm = now.getMinutes(), ss = now.getSeconds();
+      if(mm<10) mm='0'+mm; if(ss<10) ss='0'+ss;
+      var out = '['+hh+':'+mm+':'+ss+'] ' + msg + '\n';
+      var lb = get('logBox');
+      lb.textContent += out;
+      lb.scrollTop = lb.scrollHeight;
+    } catch(e){}
+  }
+  function setStatus(txt){ try{ get('status').innerText = 'Stato: ' + txt; } catch(e){} log(txt); }
+  function showPreview(src){
+    try {
+      var pv = get('preview');
+      pv.src = src;
+      pv.style.display = 'block';
+    } catch(e){}
+  }
+  function hidePreview(){
+    try { var pv = get('preview'); pv.src=''; pv.style.display='none'; } catch(e){}
+  }
 
-// Config
-var SERVER_IP = '192.168.x.x'; // Cambia con IP del PC che esegue il server Python
-var SERVER_PORT = 8080;
+  // ---- UI ----
+  var fileInput = get('fileInput');
+  var uploadBtn = get('uploadBtn');
+  var previewOnlyBtn = get('previewOnlyBtn');
+  var clearBtn = get('clearBtn');
+  var serverIpInput = get('serverIp');
+  var serverPortInput = get('serverPort');
 
-// File selection
-fileInput.addEventListener('change', function(){
-  var f = fileInput.files && fileInput.files[0];
-  if(!f){ setStatus('Nessun file selezionato'); uploadBtn.disabled = true; return; }
-  currentFile = f;
-  setStatus('File selezionato: ' + f.name + ' ('+Math.round(f.size/1024)+' KB)');
-  // Anteprima
-  try {
-    var reader = new FileReader();
-    reader.onload = function(e){
-      preview.src = e.target.result;
-      show(preview);
-      uploadBtn.disabled = false;
-    };
-    reader.onerror = function(){ setStatus('Errore lettura file'); };
-    reader.readAsDataURL(f);
-  } catch(e){ setStatus('Errore FileReader: '+(e.message||e)); }
-});
+  // ---- state ----
+  var currentFile = null;
+  var currentObjectURL = null;
 
-// Upload function
-uploadBtn.addEventListener('click', function(){
-  if(!currentFile){ setStatus('Nessun file da inviare'); return; }
-
-  try {
-    var xhr = new XMLHttpRequest();
-    var url = 'http://' + SERVER_IP + ':' + SERVER_PORT + '/';
-    xhr.open('POST', url, true);
-
-    var boundary = '----WebKitFormBoundary' + Math.random().toString(36).substr(2);
-    xhr.setRequestHeader('Content-Type', 'multipart/form-data; boundary=' + boundary);
-
-    xhr.onload = function(){
-      if(xhr.status === 200){
-        setStatus('Upload completato con successo!');
-        log('Server risponde: ' + xhr.responseText);
-      } else {
-        setStatus('Upload fallito: ' + xhr.status);
-        log('Errore server: ' + xhr.responseText);
+  // revoke function
+  function revokeObject(){
+    try {
+      if(currentObjectURL){
+        if(window.URL && URL.revokeObjectURL) URL.revokeObjectURL(currentObjectURL);
+        currentObjectURL = null;
       }
-    };
-    xhr.onerror = function(){ setStatus('Errore invio HTTP'); log('XHR error'); };
+    } catch(e){ log('revokeObject error: ' + (e.message||e)); }
+  }
 
-    // costruisci multipart body
-    var body = '--'+boundary+'\r\n';
-    body += 'Content-Disposition: form-data; name="file"; filename="'+currentFile.name+'"\r\n';
-    body += 'Content-Type: '+currentFile.type+'\r\n\r\n';
+  // set UI initial
+  setStatus('Pronto. Imposta IP del server e seleziona immagine.');
 
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var binary = e.target.result;
-      // Convert base64 string to binary string
-      var raw = atob(binary.split(',')[1]);
-      body += raw;
-      body += '\r\n--'+boundary+'--\r\n';
+  // attempt to preview using objectURL (preferred)
+  function previewUsingObjectURL(file){
+    try {
+      if(window.URL && URL.createObjectURL){
+        try {
+          revokeObject();
+          var url = URL.createObjectURL(file);
+          currentObjectURL = url;
+          showPreview(url);
+          setStatus('Anteprima via objectURL: ' + (file.name||''));
+          return true;
+        } catch(e){ log('createObjectURL failed: ' + (e.message||e)); return false; }
+      }
+      return false;
+    } catch(e){ log('previewUsingObjectURL exception: ' + (e.message||e)); return false; }
+  }
 
-      // Send as ArrayBuffer
-      var buf = new Uint8Array(body.length);
-      for(var i=0;i<body.length;i++){ buf[i]=body.charCodeAt(i); }
-      xhr.send(buf.buffer);
-      setStatus('Upload in corso...');
-    };
-    reader.readAsDataURL(currentFile);
+  // fallback preview using FileReader (may fail on Wii U but only used for preview)
+  function previewUsingFileReader(file){
+    try {
+      if(!window.FileReader){ log('No FileReader available'); setStatus('Anteprima non disponibile (no FileReader)'); return false; }
+      var fr = new FileReader();
+      fr.onerror = function(){ log('FileReader preview error'); setStatus('Errore lettura file per anteprima'); };
+      fr.onload = function(ev){
+        try {
+          showPreview(ev.target.result);
+          setStatus('Anteprima via FileReader: ' + (file.name||''));
+        } catch(e){ log('preview onload error: ' + (e.message||e)); setStatus('Errore anteprima'); }
+      };
+      fr.readAsDataURL(file);
+      return true;
+    } catch(e){ log('previewUsingFileReader exception: ' + (e.message||e)); return false; }
+  }
 
-  } catch(e){ setStatus('Errore upload: '+(e.message||e)); log('Upload exception: '+(e.message||e)); }
-});
+  // handle selection
+  fileInput.addEventListener('change', function(){
+    try {
+      var f = null;
+      if(fileInput.files && fileInput.files.length > 0) f = fileInput.files[0];
+      if(!f){
+        setStatus('Nessun file selezionato');
+        uploadBtn.disabled = true;
+        hidePreview();
+        return;
+      }
+      currentFile = f;
+      setStatus('File selezionato: ' + (f.name || '') + ' (' + Math.round((f.size||0)/1024) + ' KB)');
+      // preview: try objectURL then FileReader fallback
+      var ok = previewUsingObjectURL(f);
+      if(!ok) { previewUsingFileReader(f); }
+      uploadBtn.disabled = false;
+    } catch(e){ log('fileInput change error: ' + (e.message||e)); setStatus('Errore nella selezione file'); uploadBtn.disabled = true; }
+  }, false);
+
+  // polling fallback for browsers that don't fire change reliably
+  (function(){
+    var lastVal = '';
+    setInterval(function(){
+      try {
+        var cur = fileInput.value || '';
+        if(cur && cur !== lastVal){
+          lastVal = cur;
+          log('Polling detected file input change: ' + cur);
+          if(fileInput.files && fileInput.files.length > 0){
+            var f = fileInput.files[0];
+            currentFile = f;
+            setStatus('File selezionato (polling): ' + (f.name || ''));
+            var ok2 = previewUsingObjectURL(f);
+            if(!ok2) previewUsingFileReader(f);
+            uploadBtn.disabled = false;
+          } else {
+            setStatus('File selezionato (path): ' + cur);
+            uploadBtn.disabled = false;
+          }
+        }
+      } catch(e){}
+    }, 700);
+  })();
+
+  // upload using FormData (no FileReader for upload)
+  uploadBtn.addEventListener('click', function(){
+    try {
+      if(!currentFile){ setStatus('Nessun file da inviare'); log('Upload pressed with no file'); return; }
+      var ip = (serverIpInput.value || '').trim();
+      var port = String(serverPortInput.value || '').trim();
+      if(!ip || !port){ alert('Imposta IP e porta del server'); return; }
+      var url = 'http://' + ip + ':' + port + '/';
+      setStatus('Invio in corso a ' + url);
+      log('Uploading ' + currentFile.name + ' to ' + url);
+
+      // prepare formdata
+      try {
+        var fd = new FormData();
+        // Append file under name "file" to match the Python receiver
+        fd.append('file', currentFile, currentFile.name);
+      } catch(e){
+        log('FormData not available: ' + (e.message||e));
+        setStatus('FormData non disponibile in questo browser — upload non possibile.');
+        return;
+      }
+
+      // XHR
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      // no manual setting of Content-Type — browser will set boundary
+      xhr.timeout = 60000; // 60s
+      xhr.onload = function(){
+        try {
+          if(xhr.status >= 200 && xhr.status < 300){
+            setStatus('Upload completato con successo. Server: ' + xhr.responseText);
+            log('Server response: ' + xhr.responseText);
+          } else {
+            setStatus('Upload fallito: HTTP ' + xhr.status);
+            log('Upload failed: status ' + xhr.status + ' resp: ' + xhr.responseText);
+          }
+        } catch(e){ log('xhr.onload handler error: ' + (e.message||e)); }
+      };
+      xhr.onerror = function(){
+        setStatus('Errore durante invio (network).');
+        log('XHR network error');
+      };
+      xhr.ontimeout = function(){
+        setStatus('Timeout durante upload.');
+        log('XHR timeout');
+      };
+
+      try {
+        xhr.send(fd);
+        setStatus('Dati inviati, in attesa risposta...');
+      } catch(e){
+        log('xhr.send error: ' + (e.message||e));
+        setStatus('Errore invio dati: ' + (e.message||e));
+      }
+
+    } catch(e){ log('uploadBtn click exception: ' + (e.message||e)); setStatus('Errore avvio upload'); }
+  }, false);
+
+  // preview only button
+  previewOnlyBtn.addEventListener('click', function(){
+    if(!currentFile){ setStatus('Nessun file selezionato per anteprima'); return; }
+    // preview is already shown by selection handlers; ensure it is visible
+    var ok = previewUsingObjectURL(currentFile);
+    if(!ok) previewUsingFileReader(currentFile);
+  }, false);
+
+  // clear
+  clearBtn.addEventListener('click', function(){
+    try {
+      revokeObject();
+      currentFile = null;
+      get('fileInput').value = '';
+      hidePreview();
+      uploadBtn.disabled = true;
+      setStatus('Pulito.');
+      log('User cleared state');
+    } catch(e){ log('clearBtn error: ' + (e.message||e)); }
+  }, false);
+
+  // cleanup before unload
+  window.addEventListener('unload', function(){ try { revokeObject(); } catch(e){} }, false);
+
+})();
 </script>
-
 </body>
 </html>
