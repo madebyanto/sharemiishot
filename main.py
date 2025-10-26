@@ -5,12 +5,10 @@ import threading
 import time
 import os
 
-PORT = 8080
+PORT = 8081
 RECEIVE_TIMEOUT = 300  # 5 minuti
-
 received_files = []
 
-# funzione per ottenere IP locale della Wi-Fi
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -22,20 +20,35 @@ def get_local_ip():
         s.close()
     return ip
 
-# handler HTTP per ricevere POST con immagine
 class ImageHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         try:
+            # trova boundary multipart
+            content_type = self.headers.get('Content-Type', '')
+            boundary = content_type.split('boundary=')[-1].encode()
             length = int(self.headers['Content-Length'])
-            filename = self.headers.get('X-Filename', 'unnamed.jpg')
             data = self.rfile.read(length)
-            with open(filename, 'wb') as f:
-                f.write(data)
-            received_files.append(filename)
+
+            # estrai il file dal multipart manualmente
+            parts = data.split(b'--' + boundary)
+            for part in parts:
+                if b'Content-Disposition' in part and b'filename=' in part:
+                    # estrai filename
+                    header, file_data = part.split(b'\r\n\r\n', 1)
+                    file_data = file_data.rstrip(b'\r\n--')
+                    fname_line = [l for l in header.split(b'\r\n') if b'filename=' in l][0]
+                  filename = fname_line.split(b'filename=')[-1].strip(b'" ')
+filename = filename.decode(errors='ignore')
+if not filename:  # se vuoto
+    filename = f"image_{int(time.time())}.jpg"  # nome automatico unico
+                    with open(filename, 'wb') as f:
+                        f.write(file_data)
+                    received_files.append(filename)
+                    print(f"IMMAGINE RICEVUTA: {filename}")
+
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b'OK: file ricevuto')
-            print(f"IMMAGINE RICEVUTA: {filename}")
         except Exception as e:
             self.send_response(500)
             self.end_headers()
@@ -45,7 +58,6 @@ class ImageHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return  # disabilita log HTTP standard
 
-# thread per chiudere server dopo timeout
 def timeout_thread(httpd, timeout):
     time.sleep(timeout)
     print(f"\nTimeout di {timeout} secondi raggiunto. Chiusura server.")
@@ -56,11 +68,9 @@ def main():
     handler = ImageHandler
     httpd = socketserver.TCPServer(("", PORT), handler)
     print(f"Server pronto! Invia le immagini a: http://{local_ip}:{PORT}\n")
-    
-    # avvia timeout
+
     threading.Thread(target=timeout_thread, args=(httpd, RECEIVE_TIMEOUT), daemon=True).start()
 
-    # serve fino a shutdown
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
@@ -68,7 +78,6 @@ def main():
     finally:
         httpd.server_close()
 
-    # gestione download immagini ricevute
     for f in received_files:
         choice = input(f"Vuoi scaricare {f}? [Y/N]: ").strip().upper()
         if choice == 'Y':
