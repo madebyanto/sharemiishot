@@ -1,4 +1,4 @@
-<img src="sharemiishot.png" alt="ShareMiiShot Logo">
+<img src="sharemiishot_nobg.png" alt="ShareMiiShot Logo">
 
 # ShareMiiShot
 
