@@ -45,7 +45,7 @@ class ImageHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(b"ShareMiiShot server ready to receive images via POST.")
 
     def log_message(self, format, *args):
-        return  # disabilita log HTTP standard
+        return
 
 if __name__ == "__main__":
     ip = get_local_ip()
