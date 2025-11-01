@@ -1,40 +1,129 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>ShareMiiShot</title>
 <style>
-body { font-family: Arial; max-width: 800px; margin: 16px auto; padding: 12px; color: #111; background: #fff; }
-header img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
-h1 { font-size: 1.1rem; margin: 12px 0; }
-.box { border: 1px dashed #bbb; padding: 12px; border-radius: 8px; margin: 12px 0; background: #fafafa; }
-label { display:block; margin: 8px 0; }
-input[type=text], input[type=file] { width: 100%; padding: 6px; margin-top: 2px; }
-button { padding: 10px 14px; font-size: 1rem; border-radius: 6px; border:0; background:#0b84ff; color:#fff; cursor:pointer; }
-#status { margin-top: 8px; color:#333; }
-a { color: #0b84ff; text-decoration: none; }
-a:hover { text-decoration: underline; }
+/* Body e layout base */
+body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 16px auto;
+    padding: 12px;
+    color: #111;
+    background-color: #fff;
+    line-height: 1.4;
+}
+
+/* Header e immagine */
+header {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+header img {
+    width: 100%;
+    max-height: 200px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    display: block;
+}
+
+/* Titolo principale */
+h1 {
+    font-size: 18px;
+    margin: 12px 0 0 0;
+}
+
+/* Box principale */
+.box {
+    border: 1px dashed #bbb;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 12px 0;
+    background-color: #fafafa;
+}
+
+/* Form elements */
+label {
+    display: block;
+    margin: 8px 0 4px 0;
+    font-weight: bold;
+}
+
+input[type=text], input[type=file] {
+    width: 100%;
+    padding: 6px;
+    margin-top: 2px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    padding: 10px 14px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: none;
+    background-color: #0b84ff;
+    color: #fff;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+/* Status */
+#status {
+    margin-top: 8px;
+    color: #333;
+}
+
+/* Link */
+a {
+    color: #0b84ff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+}
 </style>
 </head>
 <body>
 
 <header>
-<img src="sharemiishot.png" alt="ShareMiiShot Banner"/>
-<h1>ShareMiiShot</h1>
+    <img src="sharemiishot.png" alt="ShareMiiShot Banner"/>
+    <h1>ShareMiiShot</h1>
 </header>
 
 <div class="box">
-<p>Select your Wii U/3DS image and upload it directly to the Python server.</p>
+    <p>Select your Wii U/3DS image and upload it directly to the Python server.</p>
     <p><strong>NEVER SHARE YOUR IP & PORT</strong></p>
 
-<label>Latest IP digits (192.168.x.x): <input type="text" id="ipEnd" value="x.x"/></label>
-<label>Select file: <input type="file" id="fileInput" accept="image/jpeg"/></label>
-<button id="sendBtn">Send image</button>
+    <label for="ipEnd">Latest IP digits (192.168.x.x):</label>
+    <input type="text" id="ipEnd" value="x.x"/>
 
-<div id="status">Status: Ready</div>
+    <label for="fileInput">Select file:</label>
+    <input type="file" id="fileInput" accept="image/jpeg"/>
+
+    <button id="sendBtn">Send image</button>
+
+    <div id="status">Status: Ready</div>
 </div>
-<footer>Made with ❤️ by Anto — <a href="settings/" target="_blank">Settings</a></footer>
+
+<footer>
+    Made with ❤️ by Anto — <a href="settings/" target="_blank">Settings</a>
+</footer>
+
+</body>
+</html>
 
 <script>
 document.getElementById('sendBtn').addEventListener('click', function(){
